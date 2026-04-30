@@ -1,0 +1,33 @@
+schema: spec-driven
+
+# 项目上下文
+context: |
+  本项目采用多智能体工作流（Multi-Agent Workflow）进行开发。
+  
+  ## 工作流架构
+  - 主调度: MainOrchestrator（通过 multi-agent-workflow rule 驱动）
+  - 9 个子 Agent: Explore, Create, GateReview, Apply, CodeReview, Test, Verify, Sync, Archive
+  - 通信协议: OpenSpec 文档格式
+  
+  ## 入口命令
+  - /opsx:workflow <change-name> - 启动完整工作流
+  - /opsx:workflow-status - 查看状态
+  - /opsx:workflow-resume - 恢复工作流
+
+# 每个 artifact 的自定义规则
+rules:
+  proposal:
+    - 必须包含 Intent、Scope、Approach 章节
+    - In Scope 和 Out of Scope 必须明确
+    - 字数控制在 500 字以内
+  design:
+    - 必须包含 Architecture 和 Component Design 章节
+    - 接口定义使用代码块
+    - 数据流使用 ASCII 图或 mermaid
+  tasks:
+    - 每个任务不超过 2 小时工作量
+    - 任务按 Phase 分组
+    - 使用 - [ ] 格式
+  specs:
+    - 每个 requirement 必须有 Given-When-Then 场景
+    - 场景覆盖正常、异常、边界情况
