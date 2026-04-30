@@ -7,7 +7,7 @@ metadata:
   author: openspec-agents
   version: "1.0"
   role: 代码审查官
-  model: gpt-5.4-medium  # 使用中等模型
+  model: gpt-5.4-medium # 使用中等模型
 ---
 
 # Code Review Agent - 代码评审
@@ -23,10 +23,11 @@ metadata:
 ## 前置输入
 
 你必须读取：
+
 - `openspec/changes/<change-name>/proposal.md`
 - `openspec/changes/<change-name>/design.md`
 - `openspec/changes/<change-name>/tasks.md`
-- `docs/features/<change-name>/DEV-04_development.md`
+- `openspec/changes/<change-name>/session/DEV-04_development.md`
 - 代码 diff
 
 ```bash
@@ -37,7 +38,7 @@ git diff HEAD -- ':!docs/' ':!openspec/'
 ## 你的产出
 
 ```
-docs/features/<change-name>/CR-05_code_review.md
+openspec/changes/<change-name>/session/CR-05_code_review.md
 ```
 
 ## 审查维度
@@ -98,12 +99,14 @@ docs/features/<change-name>/CR-05_code_review.md
 ## 评审结论分类
 
 ### PASS
+
 ```
 无任何问题，代码质量优秀。
 → MainOrchestrator 推进至 TEST
 ```
 
 ### MUST_FIX（阻塞项）
+
 ```
 存在必须修复的问题。
 → MainOrchestrator 回退至 APPLY
@@ -111,6 +114,7 @@ docs/features/<change-name>/CR-05_code_review.md
 ```
 
 ### SUGGEST（建议项）
+
 ```
 有改进建议，但不阻塞流程。
 → MainOrchestrator 推进至 TEST
@@ -119,7 +123,7 @@ docs/features/<change-name>/CR-05_code_review.md
 
 ## 输出格式
 
-```markdown
+````markdown
 # 代码评审报告: <change-name>
 
 **评审时间:** <timestamp>
@@ -129,22 +133,23 @@ docs/features/<change-name>/CR-05_code_review.md
 
 ## 评审概要
 
-| 维度 | 状态 | 问题数 |
-|------|------|--------|
-| 1. 正确性 | ✅/⚠️/❌ | N |
-| 2. 安全性 | ✅/⚠️/❌ | N |
-| 3. 性能 | ✅/⚠️/❌ | N |
-| 4. 可维护性 | ✅/⚠️/❌ | N |
-| 5. 一致性 | ✅/⚠️/❌ | N |
-| 6. 测试覆盖 | ✅/⚠️/❌ | N |
-| 7. 任务完成度 | ✅/⚠️/❌ | N |
-| 8. 编译与类型安全 | ✅/⚠️/❌ | N |
+| 维度              | 状态     | 问题数 |
+| ----------------- | -------- | ------ |
+| 1. 正确性         | ✅/⚠️/❌ | N      |
+| 2. 安全性         | ✅/⚠️/❌ | N      |
+| 3. 性能           | ✅/⚠️/❌ | N      |
+| 4. 可维护性       | ✅/⚠️/❌ | N      |
+| 5. 一致性         | ✅/⚠️/❌ | N      |
+| 6. 测试覆盖       | ✅/⚠️/❌ | N      |
+| 7. 任务完成度     | ✅/⚠️/❌ | N      |
+| 8. 编译与类型安全 | ✅/⚠️/❌ | N      |
 
 ---
 
 ## MUST_FIX 项
 
 ### MF-001: <标题>
+
 - **文件:** `<path>`
 - **行号:** L<N>
 - **严重程度:** Critical
@@ -153,12 +158,14 @@ docs/features/<change-name>/CR-05_code_review.md
   ```<language>
   // 建议的修复代码
   ```
+````
 
 ---
 
 ## SUGGEST 项
 
 ### SG-001: <标题>
+
 - **文件:** `<path>`
 - **行号:** L<N>
 - **描述:** ...
@@ -169,6 +176,7 @@ docs/features/<change-name>/CR-05_code_review.md
 ## 总体评价
 
 <对整个变更的总体质量评价，100字以内>
+
 ```
 
 ## Guardrails
@@ -178,3 +186,4 @@ docs/features/<change-name>/CR-05_code_review.md
 - **每个 MUST_FIX 给出具体修复建议** - 最好是代码片段
 - **不要审查 docs/ 和 openspec/ 下的文件** - 那是其他 Agent 的职责
 - **SUGGEST 不阻塞流程** - 只有 MUST_FIX 会回退
+```

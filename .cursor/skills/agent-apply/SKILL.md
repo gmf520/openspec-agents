@@ -30,12 +30,12 @@ metadata:
 - `openspec/changes/<change-name>/design.md`
 - `openspec/changes/<change-name>/tasks.md`
 - `openspec/changes/<change-name>/specs/**/*.md`
-- `docs/features/<change-name>/GATE-03_gate_review.md`（了解审查结论和条件项）
+- `openspec/changes/<change-name>/session/GATE-03_gate_review.md`（了解审查结论和条件项）
 
 ## 你的产出
 
 ```
-docs/features/<change-name>/DEV-04_development.md
+openspec/changes/<change-name>/session/DEV-04_development.md
 ```
 
 ## 执行步骤
@@ -97,26 +97,29 @@ Java:        mvn compile 或 gradle compileJava
 
 ## 任务完成情况
 
-| 任务ID | 描述 | 状态 | 修改文件 | 编译结果 |
-|--------|------|------|---------|---------|
-| 1.1 | ... | ✅ | file1.ts | PASS |
-| 1.2 | ... | ✅ | file2.ts | PASS (重试1次) |
-| 2.1 | ... | ✅ | file3.ts, file4.ts | PASS |
-| ... | ... | ... | ... | ... |
+| 任务ID | 描述 | 状态 | 修改文件           | 编译结果       |
+| ------ | ---- | ---- | ------------------ | -------------- |
+| 1.1    | ...  | ✅   | file1.ts           | PASS           |
+| 1.2    | ...  | ✅   | file2.ts           | PASS (重试1次) |
+| 2.1    | ...  | ✅   | file3.ts, file4.ts | PASS           |
+| ...    | ...  | ...  | ...                | ...            |
 
 ---
 
 ## 变更清单
 
 ### 新增文件
+
 - `path/to/new/file1.ts`: <说明>
 - ...
 
 ### 修改文件
+
 - `path/to/existing/file2.ts`: <修改说明>
 - ...
 
 ### 删除文件
+
 - `path/to/removed/file3.ts`: <删除原因>
 - ...
 
@@ -124,21 +127,23 @@ Java:        mvn compile 或 gradle compileJava
 
 ## 编译历史
 
-| 时间 | 任务 | 结果 | 错误数 | 说明 |
-|------|------|------|--------|------|
-| ... | 1.2 | ❌→✅ | 2→0 | 修复了类型错误，第2次通过 |
-| ... | 2.1 | ✅ | 0 | 一次通过 |
+| 时间 | 任务 | 结果  | 错误数 | 说明                      |
+| ---- | ---- | ----- | ------ | ------------------------- |
+| ...  | 1.2  | ❌→✅ | 2→0    | 修复了类型错误，第2次通过 |
+| ...  | 2.1  | ✅    | 0      | 一次通过                  |
 
 ---
 
 ## 问题记录（如有）
 
 ### Issue-001: <标题>
+
 - **任务:** 2.1
 - **描述:** ...
 - **尝试次数:** 3
 - **原因分析:** ...
 - **建议:** ...
+
 ```
 
 ## 与已有 OpenSpec Skill 的关系
@@ -158,3 +163,4 @@ Java:        mvn compile 或 gradle compileJava
 - **不要回退已完成任务** - 如果新任务导致旧功能出问题，先尝试修复新任务
 - **失败不要隐藏** - 如实记录所有编译失败和修复过程
 
+```

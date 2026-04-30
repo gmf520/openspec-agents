@@ -24,13 +24,13 @@ metadata:
 你必须读取：
 
 - `openspec/changes/<change-name>/specs/**/*.md`（了解验收场景）
-- `docs/features/<change-name>/CR-05_code_review.md`（了解评审结果）
-- `docs/features/<change-name>/DEV-04_development.md`（了解变更清单）
+- `openspec/changes/<change-name>/session/CR-05_code_review.md`（了解评审结果）
+- `openspec/changes/<change-name>/session/DEV-04_development.md`（了解变更清单）
 
 ## 你的产出
 
 ```
-docs/features/<change-name>/TEST-06_test_report.md
+openspec/changes/<change-name>/session/TEST-06_test_report.md
 ```
 
 ## 执行步骤
@@ -97,11 +97,11 @@ mvn test  # 或 gradle test
 
 ## 测试概要
 
-| 类型 | 总数 | 通过 | 失败 | 跳过 | 通过率 |
-|------|------|------|------|------|--------|
-| 单元测试 | N | N | N | N | N% |
-| 集成测试 | N | N | N | N | N% |
-| 验收场景 | N | N | N | N | N% |
+| 类型     | 总数  | 通过  | 失败  | 跳过  | 通过率 |
+| -------- | ----- | ----- | ----- | ----- | ------ |
+| 单元测试 | N     | N     | N     | N     | N%     |
+| 集成测试 | N     | N     | N     | N     | N%     |
+| 验收场景 | N     | N     | N     | N     | N%     |
 | **合计** | **N** | **N** | **N** | **N** | **N%** |
 
 ---
@@ -109,10 +109,12 @@ mvn test  # 或 gradle test
 ## 失败用例详情
 
 ### FAIL-001: <测试名称>
+
 - **文件:** <path>
 - **场景:** <验收场景名>
 - **错误信息:**
-```
+
+````
 
 ``` - **分析:** <失败原因分析> - **建议修复:** ...
 
@@ -142,11 +144,12 @@ mvn test  # 或 gradle test
 | **总计** | **N%** | **N%** |
 
 
-```
+````
 
 ## 测试结论
 
 ### PASS
+
 ```
 
 所有测试通过，验收场景全部覆盖。
@@ -155,6 +158,7 @@ mvn test  # 或 gradle test
 ```
 
 ### FAIL
+
 ```
 
 存在失败用例。
@@ -169,5 +173,7 @@ mvn test  # 或 gradle test
 - **失败用例必须有分析** - 不只报告失败，要分析原因
 - **跳过不算通过** - 跳过的测试需要额外说明原因
 - **如果无测试框架** - 输出手动验证清单，由 Verify Agent 执行
+
 ```
 
+```

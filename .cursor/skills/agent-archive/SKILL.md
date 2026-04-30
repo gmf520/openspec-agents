@@ -21,15 +21,15 @@ metadata:
 
 确认以下所有文档齐全且非空：
 
-| 文档 | 路径 |
-|------|------|
-| 需求分析 | `docs/features/<change-name>/REQ-01_requirement_analysis.md` |
-| 方案设计 | `docs/features/<change-name>/DES-02_solution_design.md` |
-| 闸门审查 | `docs/features/<change-name>/GATE-03_gate_review.md` |
-| 开发记录 | `docs/features/<change-name>/DEV-04_development.md` |
-| 代码评审 | `docs/features/<change-name>/CR-05_code_review.md` |
-| 测试报告 | `docs/features/<change-name>/TEST-06_test_report.md` |
-| 验证报告 | `docs/features/<change-name>/VERIFY-07_verification_report.md` |
+| 文档     | 路径                                                                      |
+| -------- | ------------------------------------------------------------------------- |
+| 需求分析 | `openspec/changes/<change-name>/session/REQ-01_requirement_analysis.md`   |
+| 方案设计 | `openspec/changes/<change-name>/session/DES-02_solution_design.md`        |
+| 闸门审查 | `openspec/changes/<change-name>/session/GATE-03_gate_review.md`           |
+| 开发记录 | `openspec/changes/<change-name>/session/DEV-04_development.md`            |
+| 代码评审 | `openspec/changes/<change-name>/session/CR-05_code_review.md`             |
+| 测试报告 | `openspec/changes/<change-name>/session/TEST-06_test_report.md`           |
+| 验证报告 | `openspec/changes/<change-name>/session/VERIFY-07_verification_report.md` |
 
 全部齐全 → 继续
 有缺失 → 报告 MainOrchestrator
@@ -40,7 +40,7 @@ metadata:
 
 ### Step 3: 生成交付总结（工作流特需）
 
-输出 `docs/features/<change-name>/DELIVERY_SUMMARY.md`：
+输出 `openspec/changes/<change-name>/session/DELIVERY_SUMMARY.md`：
 
 ```markdown
 # 交付总结: <change-name>
@@ -50,28 +50,31 @@ metadata:
 
 ## 阶段历程
 
-| 阶段 | 结果 | 重试 |
-|------|------|------|
-| EXPLORE | ✅ | 0 |
-| CREATE | ✅ | 0 |
-| GATE_REVIEW | ✅ PASS | 0 |
-| APPLY | ✅ | N |
-| CODE_REVIEW | ✅ | 0 |
-| TEST | ✅ | 0 |
-| VERIFY | ✅ | 0 |
-| SYNC | ✅ | 0 |
-| ARCHIVE | ✅ | 0 |
+| 阶段        | 结果    | 重试 |
+| ----------- | ------- | ---- |
+| EXPLORE     | ✅      | 0    |
+| CREATE      | ✅      | 0    |
+| GATE_REVIEW | ✅ PASS | 0    |
+| APPLY       | ✅      | N    |
+| CODE_REVIEW | ✅      | 0    |
+| TEST        | ✅      | 0    |
+| VERIFY      | ✅      | 0    |
+| SYNC        | ✅      | 0    |
+| ARCHIVE     | ✅      | 0    |
 
 ## 变更统计
+
 - 新增文件: N | 修改: N | 删除: N
 
 ## 遗留问题/建议
+
 <!-- 来自 CR-05 的 SUGGEST 项等 -->
 ```
 
 ### Step 4: 更新项目看板
 
 在 `workflow/project-board.yaml` 中：
+
 1. 将变更从 `active_changes` 移至 `completed_changes`
 2. 记录归档时间和摘要
 

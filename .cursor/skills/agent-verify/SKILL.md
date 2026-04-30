@@ -22,18 +22,19 @@ metadata:
 ## 前置输入
 
 你必须读取：
+
 - `openspec/changes/<change-name>/proposal.md`
 - `openspec/changes/<change-name>/design.md`
 - `openspec/changes/<change-name>/tasks.md`
 - `openspec/changes/<change-name>/specs/**/*.md`
-- `docs/features/<change-name>/DEV-04_development.md`
-- `docs/features/<change-name>/CR-05_code_review.md`
-- `docs/features/<change-name>/TEST-06_test_report.md`
+- `openspec/changes/<change-name>/session/DEV-04_development.md`
+- `openspec/changes/<change-name>/session/CR-05_code_review.md`
+- `openspec/changes/<change-name>/session/TEST-06_test_report.md`
 
 ## 你的产出
 
 ```
-docs/features/<change-name>/VERIFY-07_verification_report.md
+openspec/changes/<change-name>/session/VERIFY-07_verification_report.md
 ```
 
 ## 执行步骤
@@ -45,6 +46,7 @@ openspec verify --change "<change-name>" --json
 ```
 
 验证内容：
+
 - tasks.md 中所有任务是否标记完成
 - 实现是否匹配 design.md
 - specs 中的要求是否满足
@@ -57,6 +59,7 @@ powershell -ExecutionPolicy Bypass -File scripts/verify_all.ps1
 ```
 
 自定义验证脚本应包含：
+
 - 编译检查
 - Lint 检查
 - 格式检查
@@ -67,17 +70,18 @@ powershell -ExecutionPolicy Bypass -File scripts/verify_all.ps1
 
 交叉验证文档间的引用和描述是否一致：
 
-| 检查项 | 来源 A | 来源 B | 结果 |
-|--------|--------|--------|------|
-| Scope | proposal.md Scope | 实际变更文件 | ✅/❌ |
-| 接口定义 | design.md | 实际代码接口 | ✅/❌ |
-| 任务状态 | tasks.md | 实际实现 | ✅/❌ |
-| 验收场景 | specs/ | TEST-06 覆盖率 | ✅/❌ |
-| CR 修复 | CR-05 MUST_FIX | 实际代码修复 | ✅/❌ |
+| 检查项   | 来源 A            | 来源 B         | 结果  |
+| -------- | ----------------- | -------------- | ----- |
+| Scope    | proposal.md Scope | 实际变更文件   | ✅/❌ |
+| 接口定义 | design.md         | 实际代码接口   | ✅/❌ |
+| 任务状态 | tasks.md          | 实际实现       | ✅/❌ |
+| 验收场景 | specs/            | TEST-06 覆盖率 | ✅/❌ |
+| CR 修复  | CR-05 MUST_FIX    | 实际代码修复   | ✅/❌ |
 
 ### Step 4: MUST_FIX 修复验证
 
 检查 CR-05 中的所有 MUST_FIX 项是否已修复：
+
 - 逐项对比代码变更
 - 确认修复方案是否按建议实施
 
@@ -93,9 +97,10 @@ powershell -ExecutionPolicy Bypass -File scripts/verify_all.ps1
 ---
 
 ## 1. OpenSpec Verify
-
 ```
+
 <openspec verify 输出>
+
 ```
 
 结果: ✅ PASS / ❌ FAIL
@@ -107,6 +112,7 @@ powershell -ExecutionPolicy Bypass -File scripts/verify_all.ps1
 执行: `scripts/verify_all.ps1`
 
 ```
+
 <script output>
 ```
 

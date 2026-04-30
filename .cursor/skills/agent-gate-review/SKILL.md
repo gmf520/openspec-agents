@@ -22,8 +22,9 @@ metadata:
 ## 前置输入
 
 你必须读取以下文档：
-- `docs/features/<change-name>/REQ-01_requirement_analysis.md`
-- `docs/features/<change-name>/DES-02_solution_design.md`
+
+- `openspec/changes/<change-name>/session/REQ-01_requirement_analysis.md`
+- `openspec/changes/<change-name>/session/DES-02_solution_design.md`
 - `openspec/changes/<change-name>/proposal.md`
 - `openspec/changes/<change-name>/design.md`
 - `openspec/changes/<change-name>/tasks.md`
@@ -32,7 +33,7 @@ metadata:
 ## 你的产出
 
 ```
-docs/features/<change-name>/GATE-03_gate_review.md
+openspec/changes/<change-name>/session/GATE-03_gate_review.md
 ```
 
 ## 8 维度审查标准
@@ -40,6 +41,7 @@ docs/features/<change-name>/GATE-03_gate_review.md
 ### 维度 1: Scope Clarity（范围清晰度）
 
 检查 proposal.md 的 Scope 部分：
+
 - [ ] In Scope 和 Out of Scope 是否明确定义？
 - [ ] 是否有越界的变更？
 - [ ] 边界条件是否考虑？
@@ -47,6 +49,7 @@ docs/features/<change-name>/GATE-03_gate_review.md
 ### 维度 2: Requirement Integrity（需求完整性）
 
 交叉比对 REQ-01 和 proposal：
+
 - [ ] proposal 是否覆盖了所有 P0 需求？
 - [ ] P1/P2 需求的取舍是否有合理说明？
 - [ ] 非功能性需求（性能、安全、兼容性）是否涉及？
@@ -54,6 +57,7 @@ docs/features/<change-name>/GATE-03_gate_review.md
 ### 维度 3: Design Feasibility（设计可行性）
 
 检查 design.md：
+
 - [ ] 技术方案是否在当前技术栈中可行？
 - [ ] 依赖项是否可用且版本兼容？
 - [ ] 是否有过度设计或设计不足？
@@ -61,6 +65,7 @@ docs/features/<change-name>/GATE-03_gate_review.md
 ### 维度 4: Architecture Alignment（架构对齐）
 
 检查 design.md 与现有系统：
+
 - [ ] 新模块是否与现有架构风格一致？
 - [ ] 接口设计是否遵循现有约定？
 - [ ] 是否会引入循环依赖？
@@ -68,6 +73,7 @@ docs/features/<change-name>/GATE-03_gate_review.md
 ### 维度 5: Risk Assessment（风险评估）
 
 检查 REQ-01 和 design.md：
+
 - [ ] 风险是否充分识别？
 - [ ] 每个风险是否有缓解措施？
 - [ ] 是否有遗漏的高概率/高影响风险？
@@ -75,6 +81,7 @@ docs/features/<change-name>/GATE-03_gate_review.md
 ### 维度 6: Task Completeness（任务完整性）
 
 检查 tasks.md：
+
 - [ ] 是否覆盖了 design 中的所有模块？
 - [ ] 每个任务是否原子化（可独立完成）？
 - [ ] 任务顺序是否合理（依赖在前）？
@@ -83,6 +90,7 @@ docs/features/<change-name>/GATE-03_gate_review.md
 ### 维度 7: Spec Compliance（规格合规性）
 
 检查 delta specs：
+
 - [ ] 每个 requirement 是否有 Given-When-Then 场景？
 - [ ] 场景是否覆盖了正常/异常/边界？
 - [ ] 增量规格是否与实际需求一致？
@@ -90,6 +98,7 @@ docs/features/<change-name>/GATE-03_gate_review.md
 ### 维度 8: Rollback Plan（回滚方案）
 
 检查 DES-02 和 design.md：
+
 - [ ] 是否有明确的回滚方案？
 - [ ] 数据库变更是否有回滚脚本？
 - [ ] 破坏性变更是否有迁移路径？
@@ -133,23 +142,24 @@ docs/features/<change-name>/GATE-03_gate_review.md
 
 ## 审查概要
 
-| 维度 | 状态 | 评分 | 说明 |
-|------|------|------|------|
-| 1. Scope Clarity | ✅/⚠️/❌ | /10 | ... |
-| 2. Requirement Integrity | ✅/⚠️/❌ | /10 | ... |
-| 3. Design Feasibility | ✅/⚠️/❌ | /10 | ... |
-| 4. Architecture Alignment | ✅/⚠️/❌ | /10 | ... |
-| 5. Risk Assessment | ✅/⚠️/❌ | /10 | ... |
-| 6. Task Completeness | ✅/⚠️/❌ | /10 | ... |
-| 7. Spec Compliance | ✅/⚠️/❌ | /10 | ... |
-| 8. Rollback Plan | ✅/⚠️/❌ | /10 | ... |
-| **总评** | | **/80** | |
+| 维度                      | 状态     | 评分    | 说明 |
+| ------------------------- | -------- | ------- | ---- |
+| 1. Scope Clarity          | ✅/⚠️/❌ | /10     | ...  |
+| 2. Requirement Integrity  | ✅/⚠️/❌ | /10     | ...  |
+| 3. Design Feasibility     | ✅/⚠️/❌ | /10     | ...  |
+| 4. Architecture Alignment | ✅/⚠️/❌ | /10     | ...  |
+| 5. Risk Assessment        | ✅/⚠️/❌ | /10     | ...  |
+| 6. Task Completeness      | ✅/⚠️/❌ | /10     | ...  |
+| 7. Spec Compliance        | ✅/⚠️/❌ | /10     | ...  |
+| 8. Rollback Plan          | ✅/⚠️/❌ | /10     | ...  |
+| **总评**                  |          | **/80** |      |
 
 ---
 
 ## 阻塞项（如有）
 
 ### B-001: <阻塞标题>
+
 - **维度:** <dimension>
 - **严重程度:** Critical
 - **描述:** ...
@@ -160,6 +170,7 @@ docs/features/<change-name>/GATE-03_gate_review.md
 ## 条件项（如有）
 
 ### C-001: <条件标题>
+
 - **维度:** <dimension>
 - **严重程度:** Major/Minor
 - **描述:** ...
@@ -170,6 +181,7 @@ docs/features/<change-name>/GATE-03_gate_review.md
 ## 改进建议
 
 ### S-001: <建议标题>
+
 - **维度:** <dimension>
 - **描述:** ...
 - **优先级:** 低/中

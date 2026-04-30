@@ -5,6 +5,16 @@
 id: opsx-workflow
 category: Workflow
 description: "启动多智能体完整开发工作流 - 从需求分析到归档交付"
+parameters:
+
+- name: change-name
+  type: string
+  required: true
+  description: 变更名称，用作 openspec/changes/ 下的目录名
+- name: requirement
+  type: string
+  required: false
+  description: 需求描述或需求文档路径（可选）
 
 启动多智能体开发工作流。
 
@@ -38,7 +48,7 @@ description: "启动多智能体完整开发工作流 - 从需求分析到归档
 active_changes:
   - name: <change-name>
     status: EXPLORE
-    retry_counts: {...}
+    retry_counts: { ... }
     created_at: "<timestamp>"
     updated_at: "<timestamp>"
 ```
@@ -68,22 +78,19 @@ active_changes:
 EXPLORE → CREATE → GATE_REVIEW → APPLY → CODE_REVIEW → TEST → VERIFY → SYNC → ARCHIVE → 完成
 ```
 
-
-| 阶段          | Agent             | 产出                             |
+| 阶段        | Agent             | 产出                           |
 | ----------- | ----------------- | ------------------------------ |
-| EXPLORE     | Explore Agent     | 需求分析 + 方案设计                    |
+| EXPLORE     | Explore Agent     | 需求分析 + 方案设计            |
 | CREATE      | Create Agent      | proposal, design, tasks, specs |
-| GATE_REVIEW | Gate Review Agent | 8维度闸门审查                        |
-| APPLY       | Apply Agent       | 代码实现                           |
-| CODE_REVIEW | Code Review Agent | 代码评审                           |
-| TEST        | Test Agent        | 测试报告                           |
-| VERIFY      | Verify Agent      | 验证报告                           |
-| SYNC        | Sync Agent        | 规格同步                           |
-| ARCHIVE     | Archive Agent     | 归档                             |
-
+| GATE_REVIEW | Gate Review Agent | 8维度闸门审查                  |
+| APPLY       | Apply Agent       | 代码实现                       |
+| CODE_REVIEW | Code Review Agent | 代码评审                       |
+| TEST        | Test Agent        | 测试报告                       |
+| VERIFY      | Verify Agent      | 验证报告                       |
+| SYNC        | Sync Agent        | 规格同步                       |
+| ARCHIVE     | Archive Agent     | 归档                           |
 
 ## 相关命令
 
 - `/opsx:workflow-status` - 查看工作流状态
 - `/opsx:workflow-resume` - 恢复中断的工作流
-
