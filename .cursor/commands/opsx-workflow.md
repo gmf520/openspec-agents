@@ -44,7 +44,7 @@ parameters:
 ### 2. 更新项目看板
 
 ```yaml
-# 在 workflow/project-board.yaml 中创建新条目
+# 在 openspec/changes/<change-name>/session/project-board.yaml 中创建新条目
 active_changes:
   - name: <change-name>
     status: EXPLORE

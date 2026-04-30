@@ -51,7 +51,7 @@ prompt: |
   ## 上下文
   - Change Name: <change-name>
   - 前一阶段产出: <artifacts>
-  - 项目看板: workflow/project-board.yaml
+  - 项目看板: openspec/changes/<change-name>/session/project-board.yaml
 
   ## 需要产出的文档
   <artifacts>
@@ -217,7 +217,7 @@ if retry_count[state] >= 3:
 
 ## 进度追踪
 
-每次阶段完成后，更新 `workflow/project-board.yaml`：
+每次阶段完成后，更新 `openspec/changes/<change-name>/session/project-board.yaml`：
 
 ```yaml
 # 更新当前变更的状态
@@ -246,8 +246,10 @@ if retry_count[state] >= 3:
 **原因:** <brief-reason>
 
 ---
+
 **下一阶段:** <next-state>（由 <Agent> 执行）
 准备就绪，继续推进...
+
 ```
 
 ## 最终交付报告
@@ -255,28 +257,34 @@ if retry_count[state] >= 3:
 工作流完成后输出：
 
 ```
+
 ## 交付报告: <change-name>
 
 ### 变更摘要
+
 ...
 
 ### 阶段产出
-| 阶段 | 产出文档 | 状态 |
-|------|---------|------|
-| EXPLORE | REQ-01, DES-02 | ✅ |
-| CREATE | proposal, design, tasks | ✅ |
-| GATE_REVIEW | GATE-03 | ✅ PASS |
-| APPLY | DEV-04 | ✅ |
-| CODE_REVIEW | CR-05 | ✅ PASS |
-| TEST | TEST-06 | ✅ |
-| VERIFY | VERIFY-07 | ✅ |
-| SYNC | specs 同步 | ✅ |
-| ARCHIVE | archive | ✅ |
+
+| 阶段        | 产出文档                | 状态    |
+| ----------- | ----------------------- | ------- |
+| EXPLORE     | REQ-01, DES-02          | ✅      |
+| CREATE      | proposal, design, tasks | ✅      |
+| GATE_REVIEW | GATE-03                 | ✅ PASS |
+| APPLY       | DEV-04                  | ✅      |
+| CODE_REVIEW | CR-05                   | ✅ PASS |
+| TEST        | TEST-06                 | ✅      |
+| VERIFY      | VERIFY-07               | ✅      |
+| SYNC        | specs 同步              | ✅      |
+| ARCHIVE     | archive                 | ✅      |
 
 ### 审计信息
+
 - 开始时间: ...
 - 完成时间: ...
 - 回退次数: ...
 - Archive 路径: openspec/changes/archive/<change-name>/
+
 ```
 
+```

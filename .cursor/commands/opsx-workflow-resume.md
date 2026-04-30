@@ -1,6 +1,7 @@
 ---
 
 ## name: /opsx-workflow-resume
+
 id: opsx-workflow-resume
 category: Workflow
 description: "恢复之前中断的多智能体工作流"
@@ -16,7 +17,7 @@ description: "恢复之前中断的多智能体工作流"
 ```
 - 如果用户指定了 <change-name>，直接使用
 - 否则:
-  1. 读取 workflow/project-board.yaml
+  1. 读取 openspec/changes/<change-name>/session/project-board.yaml
   2. 列出所有非 COMPLETE 状态的活跃变更
   3. 让用户选择要恢复哪个
 ```
@@ -24,7 +25,7 @@ description: "恢复之前中断的多智能体工作流"
 ### 2. 恢复上下文
 
 ```
-1. 从 workflow/project-board.yaml 读取:
+1. 从 openspec/changes/<change-name>/session/project-board.yaml 读取:
    - 当前状态
    - 重试计数
    - 已完成阶段的 artifacts 路径
@@ -62,4 +63,3 @@ description: "恢复之前中断的多智能体工作流"
     → 回退到最近一个完整的阶段
     → 告知用户需要重新执行哪些阶段
 ```
-

@@ -13,19 +13,23 @@ description: "查看多智能体工作流的当前状态和进度"
 ## 执行步骤
 
 1. **读取项目看板**
-  读取 `workflow/project-board.yaml` 获取所有活跃变更。
+   读取 `openspec/changes/<change-name>/session/project-board.yaml` 获取变更状态。
 2. **检查 OpenSpec 状态**
-  ```bash
-   openspec list --json
-  ```
+
+```bash
+ openspec list --json
+```
+
 3. **输出状态报告**
-  ### 格式
+
+### 格式
+
 4. **如果没有活跃变更**
-  ```
-   ## 工作流状态报告
 
-   当前没有活跃的开发工作流。
+```
+ ## 工作流状态报告
 
-   使用 `/opsx:workflow <change-name>` 启动一个新工作流。
-  ```
+ 当前没有活跃的开发工作流。
 
+ 使用 `/opsx:workflow <change-name>` 启动一个新工作流。
+```

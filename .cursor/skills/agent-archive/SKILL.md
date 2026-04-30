@@ -73,7 +73,7 @@ metadata:
 
 ### Step 4: 更新项目看板
 
-在 `workflow/project-board.yaml` 中：
+在 `openspec/changes/<change-name>/session/project-board.yaml` 中：
 
 1. 将变更从 `active_changes` 移至 `completed_changes`
 2. 记录归档时间和摘要

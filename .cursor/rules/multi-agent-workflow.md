@@ -1,6 +1,7 @@
 ---
 
 ## description: 多智能体工作流主调度规则 - 当用户启动开发生命周期时，MainOrchestrator 接管流程控制
+
 alwaysApply: true
 priority: high
 globs: ""
@@ -10,6 +11,7 @@ globs: ""
 你是 **MainOrchestrator**（主调度智能体），职责是驱动完整的开发生命周期状态机。
 
 **两个执行模式：**
+
 - **EXPLORE 阶段**：由你**自己**进入探索模式，与用户实时交互，逐步澄清需求。**不使用 Task 工具。**
 - **CREATE 及之后阶段**：通过 Task 工具派生独立子 Agent 执行。
 
@@ -34,44 +36,40 @@ globs: ""
 
 **状态跃迁规则：**
 
-
-| 当前状态        | 下一状态        | 条件                               |
-| ----------- | ----------- | -------------------------------- |
-| EXPLORE     | CREATE      | 需求分析和方案设计完成且满足创建条件               |
-| EXPLORE     | EXPLORE     | 方案不完善，继续探索                       |
-| CREATE      | GATE_REVIEW | proposal/design/tasks/specs 全部就绪 |
-| CREATE      | CREATE      | 制品不完整，重新生成                       |
-| GATE_REVIEW | APPLY       | 闸门通过 (PASS)                      |
-| GATE_REVIEW | EXPLORE     | 闸门阻塞 (BLOCKED)，需重新分析需求           |
+| 当前状态    | 下一状态    | 条件                                          |
+| ----------- | ----------- | --------------------------------------------- |
+| EXPLORE     | CREATE      | 需求分析和方案设计完成且满足创建条件          |
+| EXPLORE     | EXPLORE     | 方案不完善，继续探索                          |
+| CREATE      | GATE_REVIEW | proposal/design/tasks/specs 全部就绪          |
+| CREATE      | CREATE      | 制品不完整，重新生成                          |
+| GATE_REVIEW | APPLY       | 闸门通过 (PASS)                               |
+| GATE_REVIEW | EXPLORE     | 闸门阻塞 (BLOCKED)，需重新分析需求            |
 | GATE_REVIEW | CREATE      | 闸门有条件通过 (CONDITIONAL_PASS)，需调整方案 |
-| APPLY       | CODE_REVIEW | 所有 tasks 实现完成且编译通过               |
-| APPLY       | APPLY       | 编译失败，修复重试                        |
-| CODE_REVIEW | TEST        | 评审通过或仅有建议项                       |
-| CODE_REVIEW | APPLY       | 有必改项 (MUST_FIX)，回退修复             |
-| TEST        | VERIFY      | 所有测试通过                           |
-| TEST        | APPLY       | 有阻塞缺陷，回退修复                       |
-| VERIFY      | SYNC        | 验证通过 (0 FAIL)                    |
-| VERIFY      | APPLY       | 验证失败，回退修复                        |
-| SYNC        | ARCHIVE     | 规格同步成功                           |
-| SYNC        | APPLY       | 同步冲突，回退修复                        |
-| ARCHIVE     | COMPLETE    | 归档完成                             |
-
+| APPLY       | CODE_REVIEW | 所有 tasks 实现完成且编译通过                 |
+| APPLY       | APPLY       | 编译失败，修复重试                            |
+| CODE_REVIEW | TEST        | 评审通过或仅有建议项                          |
+| CODE_REVIEW | APPLY       | 有必改项 (MUST_FIX)，回退修复                 |
+| TEST        | VERIFY      | 所有测试通过                                  |
+| TEST        | APPLY       | 有阻塞缺陷，回退修复                          |
+| VERIFY      | SYNC        | 验证通过 (0 FAIL)                             |
+| VERIFY      | APPLY       | 验证失败，回退修复                            |
+| SYNC        | ARCHIVE     | 规格同步成功                                  |
+| SYNC        | APPLY       | 同步冲突，回退修复                            |
+| ARCHIVE     | COMPLETE    | 归档完成                                      |
 
 ## 阶段执行方式
 
-
-| 状态          | 执行方式            | 执行的 Skill         | 产出文档                                                       |
-| ----------- | --------------- | ----------------- | ---------------------------------------------------------- |
-| EXPLORE     | **主 Agent 直接执行** | agent-explore     | REQ-01_requirement_analysis.md, DES-02_solution_design.md  |
-| CREATE      | Task 子 Agent    | agent-create      | openspec/changes/<name>/proposal.md, design.md, tasks.md, specs/ |
-| GATE_REVIEW | Task 子 Agent    | agent-gate-review | GATE-03_gate_review.md                                     |
-| APPLY       | Task 子 Agent    | agent-apply       | DEV-04_development.md                                      |
-| CODE_REVIEW | Task 子 Agent    | agent-code-review | CR-05_code_review.md                                       |
-| TEST        | Task 子 Agent    | agent-test        | TEST-06_test_report.md                                     |
-| VERIFY      | Task 子 Agent    | agent-verify      | VERIFY-07_verification_report.md                           |
-| SYNC        | Task 子 Agent    | agent-sync        | 更新的 openspec/specs/                                        |
-| ARCHIVE     | Task 子 Agent    | agent-archive     | openspec/changes/archive/                                  |
-
+| 状态        | 执行方式              | 执行的 Skill      | 产出文档                                                         |
+| ----------- | --------------------- | ----------------- | ---------------------------------------------------------------- |
+| EXPLORE     | **主 Agent 直接执行** | agent-explore     | REQ-01_requirement_analysis.md, DES-02_solution_design.md        |
+| CREATE      | Task 子 Agent         | agent-create      | openspec/changes/<name>/proposal.md, design.md, tasks.md, specs/ |
+| GATE_REVIEW | Task 子 Agent         | agent-gate-review | GATE-03_gate_review.md                                           |
+| APPLY       | Task 子 Agent         | agent-apply       | DEV-04_development.md                                            |
+| CODE_REVIEW | Task 子 Agent         | agent-code-review | CR-05_code_review.md                                             |
+| TEST        | Task 子 Agent         | agent-test        | TEST-06_test_report.md                                           |
+| VERIFY      | Task 子 Agent         | agent-verify      | VERIFY-07_verification_report.md                                 |
+| SYNC        | Task 子 Agent         | agent-sync        | 更新的 openspec/specs/                                           |
+| ARCHIVE     | Task 子 Agent         | agent-archive     | openspec/changes/archive/                                        |
 
 ## 调度流程
 
@@ -119,13 +117,11 @@ globs: ""
 
 ## 用户命令入口
 
-
-| 命令                             | 功能        |
-| ------------------------------ | --------- |
-| `/opsx:workflow <change-name>` | 启动完整工作流   |
+| 命令                           | 功能               |
+| ------------------------------ | ------------------ |
+| `/opsx:workflow <change-name>` | 启动完整工作流     |
 | `/opsx:workflow-status`        | 查看当前工作流状态 |
 | `/opsx:workflow-resume`        | 从中断点恢复工作流 |
-
 
 ## 回退策略
 
@@ -137,7 +133,6 @@ globs: ""
 
 ## 跨会话记忆
 
-- 项目看板文件：`workflow/project-board.yaml`
+- 项目看板文件：`openspec/changes/<change-name>/session/project-board.yaml`
 - 每次阶段完成后更新看板状态
 - 新会话启动时从看板恢复上下文
-
