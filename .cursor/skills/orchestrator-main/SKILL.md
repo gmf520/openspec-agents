@@ -24,8 +24,25 @@ metadata:
 - **EXPLORE 必须你亲自做** - 需要与用户交互，子 Agent 无法对话
 - **不要自己写代码** - 代码实现交给 Apply Agent
 - **不要自己审查代码** - 代码审查交给 Code Review Agent
+- **不要自己运行测试** - 测试运行交给 Test Agent
 - **不要跳过闸门** - 任何代码变更前必须通过 Gate Review Agent
 - **你的输出是决策，不是实现**
+
+### 强制执行清单（每次调度前自检）
+
+在任何阶段，准备执行操作前，先问自己这组问题：
+
+```
+[ ] 这个操作涉及读取或修改代码文件？             → 必须交给 Apply Agent
+[ ] 这个操作涉及运行编译/类型检查？               → 必须交给 Apply Agent
+[ ] 这个操作涉及运行测试？                       → 必须交给 Test Agent
+[ ] 这个操作涉及审查代码质量？                   → 必须交给 Code Review Agent
+[ ] 这个操作涉及生成/修改规划制品？               → 必须交给 Create Agent
+[ ] 这个操作涉及修改 spec 文件？                  → 必须交给 Sync Agent
+
+以上任一为「是」→ 立即停止，使用 Task 工具调度对应的子 Agent
+全部为「否」→ 这是调度决策类操作，可以亲自执行
+```
 
 ## 状态机模型
 
@@ -73,6 +90,58 @@ prompt: |
 | ARCHIVE | `archive-agent` | `.cursor/agents/archive-agent.md` |
 
 > 参照 `state-machine.yaml` 中每个状态的 `agent_ref` 字段确定当前阶段使用的 Agent。
+
+### 各阶段调度模板
+
+从 CREATE 开始，每个阶段使用相同的 Task 工具模式，只需更换 `subagent_type` 和上下文文件：
+
+**APPLY 阶段模板：**
+```yaml
+subagent_type: "apply-agent"
+description: "代码实现: <change-name>"
+prompt: |
+  ## Change Name: <change-name>
+
+  ## 上下文文件
+  - 项目看板: openspec/changes/<change-name>/session/project-board.yaml
+  - 闸门审查结论: openspec/changes/<change-name>/session/GATE-03_gate_review.md
+
+  ## 执行要求
+  执行你的 Agent 定义中的所有步骤，产出对应文档。
+```
+
+**TEST 阶段模板：**
+```yaml
+subagent_type: "test-agent"
+description: "测试验证: <change-name>"
+prompt: |
+  ## Change Name: <change-name>
+
+  ## 上下文文件
+  - 项目看板: openspec/changes/<change-name>/session/project-board.yaml
+  - 开发记录: openspec/changes/<change-name>/session/DEV-04_development.md
+  - 代码审查: openspec/changes/<change-name>/session/CR-05_code_review.md
+
+  ## 执行要求
+  执行你的 Agent 定义中的所有步骤，产出对应文档。
+```
+
+**CODE_REVIEW 阶段模板：**
+```yaml
+subagent_type: "code-review-agent"
+description: "代码审查: <change-name>"
+prompt: |
+  ## Change Name: <change-name>
+
+  ## 上下文文件
+  - 项目看板: openspec/changes/<change-name>/session/project-board.yaml
+  - 开发记录: openspec/changes/<change-name>/session/DEV-04_development.md
+
+  ## 执行要求
+  执行你的 Agent 定义中的所有步骤，产出对应文档。
+```
+
+**其他阶段（VERIFY / SYNC / ARCHIVE）** 同理，更换 `subagent_type` 和上下文文件即可。
 
 ## 阶段推进流程
 
@@ -135,6 +204,14 @@ prompt: |
 
 ### 4. APPLY → CODE_REVIEW
 
+> **⚠️ 约束强化：此阶段必须通过 Task 工具调度 Apply Agent，严禁**：
+> - 直接读取或分析源码（子 Agent 会自己做）
+> - 直接修改任何代码文件（.ts, .vue, .js 等）
+> - 直接运行编译或类型检查命令
+> - 直接修改 tasks.md 打勾
+>
+> 你的职责只有：**调度 → 等结果 → 检查条件 → 决策推进/回退**
+
 ```
 状态: APPLY
 子 Agent: Apply Agent (agent_ref: apply-agent)
@@ -150,6 +227,13 @@ prompt: |
 
 ### 5. CODE_REVIEW → TEST
 
+> **⚠️ 约束强化：此阶段必须通过 Task 工具调度 Code Review Agent，严禁**：
+> - 自行审查代码质量
+> - 直接读取源码做评审
+> - 替代子 Agent 做评审结论
+>
+> 你的职责只有：**调度 → 等结果 → 检查结论 → 决策推进/回退**
+
 ```
 状态: CODE_REVIEW
 子 Agent: Code Review Agent (agent_ref: code-review-agent)
@@ -163,6 +247,13 @@ prompt: |
 ```
 
 ### 6. TEST → VERIFY
+
+> **⚠️ 约束强化：此阶段必须通过 Task 工具调度 Test Agent，严禁**：
+> - 自行检查项目中有无测试文件
+> - 自行运行任何测试命令
+> - 自行解析测试结果、查看测试输出
+>
+> 你的职责只有：**调度 → 等结果 → 检查测试报告 → 决策推进/回退**
 
 ```
 状态: TEST
@@ -178,6 +269,13 @@ prompt: |
 
 ### 7. VERIFY → SYNC
 
+> **⚠️ 约束强化：此阶段必须通过 Task 工具调度 Verify Agent，严禁**：
+> - 自行检查 tasks.md 打勾状态
+> - 自行对照 spec 验证实现
+> - 自行读取源码做交叉验证
+>
+> 你的职责只有：**调度 → 等结果 → 检查验证报告 → 决策推进/回退**
+
 ```
 状态: VERIFY
 子 Agent: Verify Agent (agent_ref: verify-agent)
@@ -191,6 +289,12 @@ prompt: |
 ```
 
 ### 8. SYNC → ARCHIVE
+
+> **⚠️ 约束强化：此阶段必须通过 Task 工具调度 Sync Agent，严禁**：
+> - 自行修改任何 spec 文件
+> - 自行执行 openspec sync 命令
+>
+> 你的职责只有：**调度 → 等结果 → 检查同步结果 → 决策推进/回退**
 
 ```
 状态: SYNC
