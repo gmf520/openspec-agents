@@ -29,7 +29,7 @@ metadata:
 
 ## 状态机模型
 
-完整状态机定义参考 `workflow/state-machine.yaml`。核心流程：
+完整状态机定义参考 `.cursor/workflow/state-machine.yaml`。核心流程：
 
 ```
 EXPLORE → CREATE → GATE_REVIEW → APPLY → CODE_REVIEW → TEST → VERIFY → SYNC → ARCHIVE → COMPLETE

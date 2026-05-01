@@ -55,7 +55,7 @@ rg -l "#\[test\]" -l
 ### Step 2: 运行测试
 
 ```bash
-# 使用 scripts/test_runner.ps1（如存在）
+# 使用 .cursor/scripts/test_runner.ps1（如存在）
 # 或直接使用项目测试命令
 
 # TypeScript/JavaScript:
@@ -73,6 +73,9 @@ cargo test --verbose
 
 # Java:
 mvn test  # 或 gradle test
+
+# .NET:
+dotnet test
 ```
 
 ### Step 3: 验证验收场景

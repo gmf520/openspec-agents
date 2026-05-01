@@ -54,8 +54,8 @@ openspec verify --change "<change-name>" --json
 ### Step 2: 运行自定义验证脚本
 
 ```bash
-# 如 scripts/verify_all.ps1 存在
-powershell -ExecutionPolicy Bypass -File scripts/verify_all.ps1
+# 如 .cursor/scripts/verify_all.ps1 存在
+powershell -ExecutionPolicy Bypass -File .cursor/scripts/verify_all.ps1
 ```
 
 自定义验证脚本应包含：
@@ -109,7 +109,7 @@ powershell -ExecutionPolicy Bypass -File scripts/verify_all.ps1
 
 ## 2. 自定义脚本验证
 
-执行: `scripts/verify_all.ps1`
+执行: `.cursor/scripts/verify_all.ps1`
 
 ```
 

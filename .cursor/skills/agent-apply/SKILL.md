@@ -62,7 +62,7 @@ openspec instructions apply --change "<change-name>" --json
 2. 读取相关文件，理解上下文
 3. 编写/修改代码（最小化变更）
 4. 执行编译检查:
-   - 执行 scripts/compile_check.ps1
+   - 执行 .cursor/scripts/compile_check.ps1
    - 或等效的编译命令
 5. 编译结果处理:
    ✅ 通过 → 使用 StrReplace 将 tasks.md 中对应行 `- [ ]` 改为 `- [x]`，继续下一个
@@ -80,7 +80,7 @@ openspec instructions apply --change "<change-name>" --json
 
 ### Step 3: 编译检查脚本
 
-如果 `scripts/compile_check.ps1` 不存在或不可用，根据项目类型选择合适的编译命令：
+如果 `.cursor/scripts/compile_check.ps1` 不存在或不可用，根据项目类型选择合适的编译命令：
 
 ```
 TypeScript:  npx tsc --noEmit
@@ -88,6 +88,7 @@ Rust:        cargo check
 Go:          go build ./...
 Python:      python -m py_compile <files>
 Java:        mvn compile 或 gradle compileJava
+.NET:        dotnet build
 ```
 
 ### Step 4: 生成开发记录
