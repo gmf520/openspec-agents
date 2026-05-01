@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, watch } from 'vue'
 import draggable from 'vuedraggable'
 import type { Column } from '../types'
 import { useTodoStore } from '../stores/todo'
@@ -22,10 +22,27 @@ const showAddForm = ref(false)
 const newCardTitle = ref('')
 const newCardTitleError = ref('')
 
-const cards = computed({
-  get: () => store.getCardsByColumn(props.column.id),
-  set: () => {},
-})
+const columnCards = ref(store.getCardsByColumn(props.column.id))
+
+watch(() => store.getCardsByColumn(props.column.id), (newCards) => {
+  columnCards.value = newCards
+}, { immediate: true })
+
+interface AddedData {
+  element: { id: string }
+  newIndex: number
+}
+
+interface MovedData {
+  element: { id: string }
+  oldIndex: number
+  newIndex: number
+}
+
+interface RemovedData {
+  element: { id: string }
+  oldIndex: number
+}
 
 function startRename() {
   editTitle.value = props.column.title
@@ -77,17 +94,14 @@ function handleAddCard() {
   showAddForm.value = false
 }
 
-function onDragChange() {
-  const columnCards = store.cards.filter((c) => c.columnId === props.column.id)
-  const ordered = [...columnCards].sort((a, b) => a.order - b.order)
-  const displayCards = store.getCardsByColumn(props.column.id)
-
-  if (displayCards.length === ordered.length) {
-    displayCards.forEach((card, i) => {
-      if (card.id !== ordered[i]?.id) {
-        store.moveCard(card.id, props.column.id, i)
-      }
-    })
+function onDragChange(evt: { added?: AddedData; moved?: MovedData; removed?: RemovedData }) {
+  if (evt.added) {
+    store.moveCard(evt.added.element.id, props.column.id, evt.added.newIndex)
+    return
+  }
+  if (evt.moved) {
+    store.moveCard(evt.moved.element.id, props.column.id, evt.moved.newIndex)
+    return
   }
 }
 
@@ -111,7 +125,7 @@ function onToggleComplete(cardId: string) {
     <div class="column-header">
       <div v-if="!isEditing" class="column-title-wrapper" @dblclick="startRename">
         <h3 class="column-title">{{ column.title }}</h3>
-        <span class="column-count">{{ cards.length }}</span>
+        <span class="column-count">{{ columnCards.length }}</span>
       </div>
       <div v-else class="column-edit">
         <input
@@ -138,7 +152,7 @@ function onToggleComplete(cardId: string) {
     </div>
 
     <draggable
-      :list="cards"
+      :list="columnCards"
       group="cards"
       item-key="id"
       class="column-cards"
@@ -156,7 +170,7 @@ function onToggleComplete(cardId: string) {
       </template>
     </draggable>
 
-    <div v-if="cards.length === 0" class="column-empty">
+    <div v-if="columnCards.length === 0" class="column-empty">
       <p>暂无卡片</p>
     </div>
 
