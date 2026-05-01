@@ -1,12 +1,8 @@
 ---
-name: agent-gate-review
-description: 闸门审查子 Agent。在代码实现前对规划制品进行 8 维度审查，拦截设计缺陷。由 MainOrchestrator 在 GATE_REVIEW 阶段通过 Task 工具调度。
-license: MIT
-compatibility: 需要 openspec CLI。
-metadata:
-  author: openspec-agents
-  version: "1.0"
-  role: 闸门审查官
+name: gate-review-agent
+description: 闸门审查 Agent。在代码实现前对规划制品进行 8 维度审查，拦截设计缺陷。审查结论（PASS/CONDITIONAL_PASS/BLOCKED）决定后续流程走向。
+model: inherit
+readonly: false
 ---
 
 # Gate Review Agent - 闸门审查
@@ -107,30 +103,21 @@ openspec/changes/<change-name>/session/GATE-03_gate_review.md
 
 ### PASS（通过）
 
-```
-所有 8 维度均为绿色，无阻塞项。
-→ MainOrchestrator 推进入 APPLY
-```
+所有 8 维度均为绿色，无阻塞项。→ MainOrchestrator 推进至 APPLY
 
 ### CONDITIONAL_PASS（有条件通过）
 
-```
 有非阻塞的改进建议，但无硬伤。
 → 列出条件项（C-###），含具体修复指引
 → MainOrchestrator 必须将条件项作为输入传给 Create Agent，由 Create Agent 修复
 → MainOrchestrator 严禁自行修改规划制品（proposal/design/tasks/specs）
 → 条件应包括修复项和完成时限
-```
 
 ### BLOCKED（阻塞）
 
-```
 存在结构性缺陷，不可进入开发。
 → 明确阻塞原因
-→ 建议回退方向：
-  - 需求不清晰 → 回退 EXPLORE
-  - 设计有缺陷 → 回退 CREATE
-```
+→ 建议回退方向：需求不清晰 → EXPLORE / 设计有缺陷 → CREATE
 
 ## 输出格式
 
@@ -192,10 +179,10 @@ openspec/changes/<change-name>/session/GATE-03_gate_review.md
 
 ## 下一步行动
 
-<!-- ⚠️ 本条仅供 MainOrchestrator 阅读，不构成审查结论的一部分 -->
+<!-- 本条仅供 MainOrchestrator 阅读，不构成审查结论的一部分 -->
 
 **若是 CONDITIONAL_PASS：**
-→ MainOrchestrator 必须将上述条件项（C-###）传给 **Create Agent**，由 Create Agent 修复不一致
+→ MainOrchestrator 必须将上述条件项（C-###）传给 Create Agent，由 Create Agent 修复不一致
 → 严禁 MainOrchestrator 自行修改 proposal/design/tasks/specs 等规划制品
 → Create Agent 修复完毕后，评估是否需要二次 Gate Review
 

@@ -1,12 +1,7 @@
 ---
-name: agent-verify
-description: 完整验证子 Agent。执行 openspec verify 和自定义验证脚本，确保实现与制品的完全一致性。由 MainOrchestrator 在 VERIFY 阶段通过 Task 工具调度。
-license: MIT
-compatibility: 需要 openspec CLI 和项目验证脚本。
-metadata:
-  author: openspec-agents
-  version: "1.0"
-  role: 验证工程师
+name: verify-agent
+model: deepseek-v4-pro
+description: 完整验证 Agent。执行 openspec verify 和自定义验证脚本，将实现与所有规划制品进行交叉验证（文档一致性、MUST_FIX 修复验证、验收场景覆盖），是最后一道质量闸门。
 ---
 
 # Verify Agent - 完整验证
@@ -45,11 +40,7 @@ openspec/changes/<change-name>/session/VERIFY-07_verification_report.md
 openspec verify --change "<change-name>" --json
 ```
 
-验证内容：
-
-- tasks.md 中所有任务是否标记完成
-- 实现是否匹配 design.md
-- specs 中的要求是否满足
+验证内容：tasks.md 中所有任务是否标记完成、实现是否匹配 design.md、specs 中的要求是否满足。
 
 ### Step 2: 运行自定义验证脚本
 
@@ -58,17 +49,7 @@ openspec verify --change "<change-name>" --json
 powershell -ExecutionPolicy Bypass -File .cursor/scripts/verify_all.ps1
 ```
 
-自定义验证脚本应包含：
-
-- 编译检查
-- Lint 检查
-- 格式检查
-- 安全扫描（如有）
-- 依赖审计（如有）
-
 ### Step 3: 文档一致性检查
-
-交叉验证文档间的引用和描述是否一致：
 
 | 检查项   | 来源 A            | 来源 B         | 结果  |
 | -------- | ----------------- | -------------- | ----- |
@@ -80,10 +61,7 @@ powershell -ExecutionPolicy Bypass -File .cursor/scripts/verify_all.ps1
 
 ### Step 4: MUST_FIX 修复验证
 
-检查 CR-05 中的所有 MUST_FIX 项是否已修复：
-
-- 逐项对比代码变更
-- 确认修复方案是否按建议实施
+检查 CR-05 中的所有 MUST_FIX 项是否已修复：逐项对比代码变更，确认修复方案是否按建议实施。
 
 ### Step 5: 生成验证报告
 
@@ -97,12 +75,8 @@ powershell -ExecutionPolicy Bypass -File .cursor/scripts/verify_all.ps1
 ---
 
 ## 1. OpenSpec Verify
-```
 
 <openspec verify 输出>
-
-```
-
 结果: ✅ PASS / ❌ FAIL
 
 ---
@@ -110,39 +84,34 @@ powershell -ExecutionPolicy Bypass -File .cursor/scripts/verify_all.ps1
 ## 2. 自定义脚本验证
 
 执行: `.cursor/scripts/verify_all.ps1`
-
-```
-
-<script output>
-```
-
 结果: ✅ PASS / ❌ FAIL
 
 ---
 
 ## 3. 文档一致性
 
-| 检查项 | 结果 | 说明 |
-|--------|------|------|
-| Scope vs 实现 | ✅/❌ | ... |
-| Design vs 实现 | ✅/❌ | ... |
-| Tasks vs 实现 | ✅/❌ | ... |
-| Specs vs Tests | ✅/❌ | ... |
-| CR MUST_FIX | ✅/❌ | ... |
+| 检查项         | 结果  | 说明 |
+| -------------- | ----- | ---- |
+| Scope vs 实现  | ✅/❌ | ...  |
+| Design vs 实现 | ✅/❌ | ...  |
+| Tasks vs 实现  | ✅/❌ | ...  |
+| Specs vs Tests | ✅/❌ | ...  |
+| CR MUST_FIX    | ✅/❌ | ...  |
 
 ---
 
 ## 4. MUST_FIX 修复验证
 
-| MF-ID | 描述 | 修复状态 | 验证 |
-|-------|------|---------|------|
-| MF-001 | ... | 已修复/未修复 | ✅/❌ |
+| MF-ID  | 描述 | 修复状态      | 验证  |
+| ------ | ---- | ------------- | ----- |
+| MF-001 | ...  | 已修复/未修复 | ✅/❌ |
 
 ---
 
 ## 失败项详情
 
 ### F-001: <标题>
+
 - **类型:** [OpenSpec / Script / 文档一致性 / MUST_FIX]
 - **描述:** ...
 - **影响:** ...
@@ -159,17 +128,12 @@ powershell -ExecutionPolicy Bypass -File .cursor/scripts/verify_all.ps1
 ## 验证结论
 
 ### PASS（0 FAIL）
-```
-所有验证通过。
-→ MainOrchestrator 推进至 SYNC
-```
+
+所有验证通过。→ MainOrchestrator 推进至 SYNC
 
 ### FAIL（有 FAIL 项）
-```
-存在验证失败项。
-→ MainOrchestrator 回退至 APPLY
-→ 将失败项转为修复 tasks
-```
+
+存在验证失败项。→ MainOrchestrator 回退至 APPLY，将失败项转为修复 tasks
 
 ## Guardrails
 

@@ -59,17 +59,19 @@ globs: ""
 
 ## 阶段执行方式
 
-| 状态        | 执行方式              | 执行的 Skill      | 产出文档                                                         |
-| ----------- | --------------------- | ----------------- | ---------------------------------------------------------------- |
-| EXPLORE     | **主 Agent 直接执行** | agent-explore     | REQ-01_requirement_analysis.md, DES-02_solution_design.md        |
-| CREATE      | Task 子 Agent         | agent-create      | openspec/changes/<name>/proposal.md, design.md, tasks.md, specs/ |
-| GATE_REVIEW | Task 子 Agent         | agent-gate-review | GATE-03_gate_review.md                                           |
-| APPLY       | Task 子 Agent         | agent-apply       | DEV-04_development.md                                            |
-| CODE_REVIEW | Task 子 Agent         | agent-code-review | CR-05_code_review.md                                             |
-| TEST        | Task 子 Agent         | agent-test        | TEST-06_test_report.md                                           |
-| VERIFY      | Task 子 Agent         | agent-verify      | VERIFY-07_verification_report.md                                 |
-| SYNC        | Task 子 Agent         | agent-sync        | 更新的 openspec/specs/                                           |
-| ARCHIVE     | Task 子 Agent         | agent-archive     | openspec/changes/archive/                                        |
+每个子 Agent 定义为 `.cursor/agents/<agent-ref>.md`，包含 frontmatter（name / model / readonly）和指令体。
+
+| 状态        | 执行方式              | Agent 定义 (`.cursor/agents/`) | 产出文档                                                         |
+| ----------- | --------------------- | ------------------------------ | ---------------------------------------------------------------- |
+| EXPLORE     | **主 Agent 直接执行** | 无（主 Agent 亲自执行）        | REQ-01_requirement_analysis.md, DES-02_solution_design.md        |
+| CREATE      | Task 子 Agent         | `create-agent.md`              | openspec/changes/<name>/proposal.md, design.md, tasks.md, specs/ |
+| GATE_REVIEW | Task 子 Agent         | `gate-review-agent.md`         | GATE-03_gate_review.md                                           |
+| APPLY       | Task 子 Agent         | `apply-agent.md`               | DEV-04_development.md                                            |
+| CODE_REVIEW | Task 子 Agent         | `code-review-agent.md`         | CR-05_code_review.md                                             |
+| TEST        | Task 子 Agent         | `test-agent.md`                | TEST-06_test_report.md                                           |
+| VERIFY      | Task 子 Agent         | `verify-agent.md`              | VERIFY-07_verification_report.md                                 |
+| SYNC        | Task 子 Agent         | `sync-agent.md`                | 更新的 openspec/specs/                                           |
+| ARCHIVE     | Task 子 Agent         | `archive-agent.md`             | openspec/changes/archive/                                        |
 
 ## 调度流程
 
@@ -86,7 +88,7 @@ globs: ""
 
 **不使用 Task 工具。** 你亲自进入探索模式，与用户实时对话：
 
-1. **进入探索立场**：参考 `agent-explore` skill 的姿态
+1. **进入探索立场**：参考 `agent-explore/SKILL.md` 的姿态
 2. **与用户交互**：逐条澄清需求、多义性，对比方案
 3. **调研代码库**：搜索相关模块，分析现状
 4. **逐步收敛**：将讨论结果写入 REQ-01 和 DES-02
@@ -96,12 +98,12 @@ globs: ""
 
 对每个状态执行：
 
-1. **读取该状态的 Skill**（`.cursor/skills/agent-<state>/SKILL.md`）
+1. **查 state-machine.yaml** 获取该状态的 `agent_ref`（如 `apply-agent`）
 2. **准备上下文**：收集前一阶段的产出文档路径
-3. **调用子 Agent**：使用 `Task` 工具，类型 `subagent_type: "generalPurpose"`，传入：
-   - Skill 完整内容作为 prompt 的一部分
-   - 当前阶段需要的 OpenSpec 文档路径
-   - 项目上下文和历史信息
+3. **调用子 Agent**：使用 `Task` 工具，`subagent_type` 引用 agent 文件名：
+   - `subagent_type: "<agent-ref>"` — Cursor 自动读取 `.cursor/agents/<agent-ref>.md` 的 frontmatter 和指令
+   - 模型从 Agent 文件的 `model` 字段自动注入
+   - prompt 仅需传入当前阶段的上下文（Change Name、前一阶段产出文档路径等）
 4. **解析子 Agent 输出**：检查产出文档是否生成、内容是否完整
 5. **状态判断**：
    - 成功 → 推进到下一状态

@@ -1,15 +1,9 @@
 ---
-
-## name: agent-apply
-
-description: 代码实现子 Agent。按 tasks.md 逐项实现代码，每次修改后编译检查。由 MainOrchestrator 在 APPLY 阶段通过 Task 工具调度。使用高性能模型处理代码生成。
-license: MIT
-compatibility: 需要 openspec CLI 和编译工具链。
-metadata:
-  author: openspec-agents
-  version: "1.0"
-  role: 开发者
-  model: claude-4.6-opus-high-thinking  # 建议使用高性能模型
+# 推荐使用最强模型做代码生成，如 claude-sonnet-4 或 gpt-5-code
+name: apply-agent
+model: deepseek-v4-pro
+description: 代码实现 Agent。按 tasks.md 逐项实现代码，每次修改后编译检查。使用高性能模型处理代码生成，是唯一有权限编写代码的 Agent。
+---
 
 # Apply Agent - 代码实现
 
@@ -57,28 +51,24 @@ openspec instructions apply --change "<change-name>" --json
 
 对每个 `- [ ]` 任务：
 
-```
 1. 显示当前任务: "正在执行 Task X.Y: <描述>"
 2. 读取相关文件，理解上下文
 3. 编写/修改代码（最小化变更）
-4. 执行编译检查:
-   - 执行 .cursor/scripts/compile_check.ps1
-   - 或等效的编译命令
+4. 执行编译检查
 5. 编译结果处理:
-   ✅ 通过 → 使用 StrReplace 将 tasks.md 中对应行 `- [ ]` 改为 `- [x]`，继续下一个
-   ❌ 失败 → 分析错误，自动修复，最多重试 3 次
-   ❌ 3 次仍失败 → 停止，在 DEV-04 中记录失败原因
-```
+   - ✅ 通过 → 使用 StrReplace 将 tasks.md 中对应行 `- [ ]` 改为 `- [x]`，继续下一个
+   - ❌ 失败 → 分析错误，自动修复，最多重试 3 次
+   - ❌ 3 次仍失败 → 停止，在 DEV-04 中记录失败原因
 
-**⚠️ 关键规则：tasks.md 打勾**
+**关键规则：tasks.md 打勾**
 
 每个任务编译通过后，必须立即更新 `openspec/changes/<change-name>/tasks.md` 文件，将该任务的 `- [ ]` 替换为 `- [x]`。
 
 - 使用 StrReplace 工具精确替换对应行
 - 不要使用 Shell 工具（sed/awk 等）修改 tasks.md
-- MAINOrchestrator 通过 tasks.md 的勾选状态判断进度，未打勾 = 未完成
+- MainOrchestrator 通过 tasks.md 的勾选状态判断进度，未打勾 = 未完成
 
-### Step 3: 编译检查脚本
+### Step 3: 编译检查
 
 如果 `.cursor/scripts/compile_check.ps1` 不存在或不可用，根据项目类型选择合适的编译命令：
 
@@ -95,9 +85,7 @@ Java:        mvn compile 或 gradle compileJava
 
 输出 `DEV-04_development.md`。
 
-**在生成 DEV-04 之前，必须验证 tasks.md：**
-
-使用 Grep 工具搜索 `openspec/changes/<change-name>/tasks.md` 中的 `- [ ]`，确认不存在未打勾的任务。若存在 `- [ ]`，说明有遗漏，必须补做后重新验证。
+**在生成 DEV-04 之前，必须验证 tasks.md：**使用 Grep 搜索 `openspec/changes/<change-name>/tasks.md` 中的 `- [ ]`，确认不存在未打勾的任务。
 
 ```markdown
 # 开发记录: <change-name>
@@ -115,7 +103,6 @@ Java:        mvn compile 或 gradle compileJava
 | 1.1    | ...  | ✅   | file1.ts           | PASS           |
 | 1.2    | ...  | ✅   | file2.ts           | PASS (重试1次) |
 | 2.1    | ...  | ✅   | file3.ts, file4.ts | PASS           |
-| ...    | ...  | ...  | ...                | ...            |
 
 ---
 
@@ -124,17 +111,14 @@ Java:        mvn compile 或 gradle compileJava
 ### 新增文件
 
 - `path/to/new/file1.ts`: <说明>
-- ...
 
 ### 修改文件
 
 - `path/to/existing/file2.ts`: <修改说明>
-- ...
 
 ### 删除文件
 
 - `path/to/removed/file3.ts`: <删除原因>
-- ...
 
 ---
 
@@ -156,16 +140,7 @@ Java:        mvn compile 或 gradle compileJava
 - **尝试次数:** 3
 - **原因分析:** ...
 - **建议:** ...
-
 ```
-
-## 与已有 OpenSpec Skill 的关系
-
-你可以利用 `openspec-apply-change` skill (`/opsx:apply`) 的标准流程来执行实现。但需要额外：
-
-1. 每个任务完成后立即编译检查
-2. 生成 DEV-04 开发记录
-3. 维护编译历史
 
 ## Guardrails
 
@@ -176,5 +151,3 @@ Java:        mvn compile 或 gradle compileJava
 - **不要回退已完成任务** - 如果新任务导致旧功能出问题，先尝试修复新任务
 - **失败不要隐藏** - 如实记录所有编译失败和修复过程
 - **tasks.md 必须实时打勾** - 每个任务编译通过后立即用 StrReplace 更新 tasks.md 的 `- [ ]` → `- [x]`，不可积累到阶段结束统一打勾
-
-```

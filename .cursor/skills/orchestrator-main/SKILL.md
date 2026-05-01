@@ -37,28 +37,42 @@ EXPLORE → CREATE → GATE_REVIEW → APPLY → CODE_REVIEW → TEST → VERIFY
 
 ## 调度子 Agent 的方法（CREATE 起使用）
 
-从 CREATE 阶段开始，使用 `Task` 工具调用子 Agent。EXPLORE 阶段不使用此方法。
+从 CREATE 阶段开始，使用 `Task` 工具调用子 Agent。每个 Agent 的定义文件在 `.cursor/agents/<agent-ref>.md`，包含：
+- **frontmatter**: `name`（标识）、`model`（分配的模型）、`readonly`（读写权限）
+- **body**: Agent 的完整指令（角色、步骤、产出、Guardrails）
+
+调度时只需指定 `subagent_type` 为 agent 文件名，Cursor 自动注入模型和指令。
 
 ```yaml
-subagent_type: "generalPurpose"
+subagent_type: "<agent-ref>"            # 对应 .cursor/agents/<agent-ref>.md
+                                        # 模型从 frontmatter 的 model 字段自动注入
 description: "<当前阶段简短描述>"
 prompt: |
-  你当前是 <Agent名称>，执行 skill: agent-<stage>
+  ## Change Name: <change-name>
 
-  ## 当前任务
-  <从 skill 文件提取的关键指令>
-
-  ## 上下文
-  - Change Name: <change-name>
+  ## 上下文文件
+  <!-- 仅传入当前阶段所需的文件路径，Agent 指令体已定义完整的执行步骤 -->
   - 前一阶段产出: <artifacts>
   - 项目看板: openspec/changes/<change-name>/session/project-board.yaml
 
-  ## 需要产出的文档
-  <artifacts>
-
   ## 执行要求
-  <skill 中的核心步骤和注意事项>
+  执行你的 Agent 定义中的所有步骤，产出对应文档。
 ```
+
+### Agent 引用速查表
+
+| 阶段 | agent_ref（`subagent_type`） | Agent 文件 |
+|------|------------------------------|-----------|
+| CREATE | `create-agent` | `.cursor/agents/create-agent.md` |
+| GATE_REVIEW | `gate-review-agent` | `.cursor/agents/gate-review-agent.md` |
+| APPLY | `apply-agent` | `.cursor/agents/apply-agent.md` |
+| CODE_REVIEW | `code-review-agent` | `.cursor/agents/code-review-agent.md` |
+| TEST | `test-agent` | `.cursor/agents/test-agent.md` |
+| VERIFY | `verify-agent` | `.cursor/agents/verify-agent.md` |
+| SYNC | `sync-agent` | `.cursor/agents/sync-agent.md` |
+| ARCHIVE | `archive-agent` | `.cursor/agents/archive-agent.md` |
+
+> 参照 `state-machine.yaml` 中每个状态的 `agent_ref` 字段确定当前阶段使用的 Agent。
 
 ## 阶段推进流程
 
@@ -66,7 +80,7 @@ prompt: |
 
 ```
 状态: EXPLORE
-执行方式: 主 Agent 进入探索模式（参考 agent-explore skill 姿态）
+执行方式: 主 Agent 进入探索模式（参考 agent-explore/SKILL.md 的探索姿态）
           与用户实时对话，逐步澄清需求和方案
 
 执行过程:
@@ -90,7 +104,7 @@ prompt: |
 
 ```
 状态: CREATE
-子 Agent: Create Agent (agent-create skill)
+子 Agent: Create Agent (agent_ref: create-agent)
 检查条件:
   - openspec/changes/<change-name>/proposal.md 存在
   - openspec/changes/<change-name>/design.md 存在
@@ -106,7 +120,7 @@ prompt: |
 
 ```
 状态: GATE_REVIEW
-子 Agent: Gate Review Agent (agent-gate-review skill)
+子 Agent: Gate Review Agent (agent_ref: gate-review-agent)
 检查条件:
   - GATE-03_gate_review.md 已生成
   - 审查结论: PASS / CONDITIONAL_PASS / BLOCKED
@@ -123,7 +137,7 @@ prompt: |
 
 ```
 状态: APPLY
-子 Agent: Apply Agent (agent-apply skill)
+子 Agent: Apply Agent (agent_ref: apply-agent)
 检查条件:
   - openspec status --change "<name>" --json 显示所有 tasks 完成
   - DEV-04_development.md 编译结果: PASS
@@ -138,7 +152,7 @@ prompt: |
 
 ```
 状态: CODE_REVIEW
-子 Agent: Code Review Agent (agent-code-review skill)
+子 Agent: Code Review Agent (agent_ref: code-review-agent)
 检查条件:
   - CR-05_code_review.md 已生成
   - 审查结论: PASS / MUST_FIX / SUGGEST
@@ -152,7 +166,7 @@ prompt: |
 
 ```
 状态: TEST
-子 Agent: Test Agent (agent-test skill)
+子 Agent: Test Agent (agent_ref: test-agent)
 检查条件:
   - TEST-06_test_report.md 已生成
   - 测试结果: 全部 PASS
@@ -166,7 +180,7 @@ prompt: |
 
 ```
 状态: VERIFY
-子 Agent: Verify Agent (agent-verify skill)
+子 Agent: Verify Agent (agent_ref: verify-agent)
 检查条件:
   - VERIFY-07_verification_report.md 已生成
   - 验证结果: 0 FAIL
@@ -180,7 +194,7 @@ prompt: |
 
 ```
 状态: SYNC
-子 Agent: Sync Agent (agent-sync skill)
+子 Agent: Sync Agent (agent_ref: sync-agent)
 检查条件:
   - openspec/specs/ 已更新
 
@@ -193,7 +207,7 @@ prompt: |
 
 ```
 状态: ARCHIVE
-子 Agent: Archive Agent (agent-archive skill)
+子 Agent: Archive Agent (agent_ref: archive-agent)
 检查条件:
   - openspec/changes/archive/<change-name>/ 存在且内容完整
 

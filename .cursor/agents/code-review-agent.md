@@ -1,13 +1,8 @@
 ---
-name: agent-code-review
-description: 代码评审子 Agent。对 Apply Agent 的代码变更进行全面审查，发现自审盲区。由 MainOrchestrator 在 CODE_REVIEW 阶段通过 Task 工具调度。
-license: MIT
-compatibility: 需要 git 和 openspec CLI。
-metadata:
-  author: openspec-agents
-  version: "1.0"
-  role: 代码审查官
-  model: gpt-5.4-medium # 使用中等模型
+# 推荐使用与 apply-agent 不同的模型，避免同模型自审盲区
+name: code-review-agent
+model: deepseek-v4-pro
+description: 代码评审 Agent。对 Apply Agent 的代码变更进行全面审查（正确性/安全性/性能/可维护性/一致性/测试覆盖/任务完成度/类型安全），发现自审盲区。
 ---
 
 # Code Review Agent - 代码评审
@@ -100,30 +95,19 @@ openspec/changes/<change-name>/session/CR-05_code_review.md
 
 ### PASS
 
-```
-无任何问题，代码质量优秀。
-→ MainOrchestrator 推进至 TEST
-```
+无任何问题，代码质量优秀。→ MainOrchestrator 推进至 TEST
 
 ### MUST_FIX（阻塞项）
 
-```
-存在必须修复的问题。
-→ MainOrchestrator 回退至 APPLY
-→ 将 MUST_FIX 项追加到 tasks.md
-```
+存在必须修复的问题。→ MainOrchestrator 回退至 APPLY，将 MUST_FIX 项追加到 tasks.md
 
 ### SUGGEST（建议项）
 
-```
-有改进建议，但不阻塞流程。
-→ MainOrchestrator 推进至 TEST
-→ 建议项记录在案，后续可优化
-```
+有改进建议，但不阻塞流程。→ MainOrchestrator 推进至 TEST，建议项记录在案
 
 ## 输出格式
 
-````markdown
+```markdown
 # 代码评审报告: <change-name>
 
 **评审时间:** <timestamp>
@@ -154,11 +138,7 @@ openspec/changes/<change-name>/session/CR-05_code_review.md
 - **行号:** L<N>
 - **严重程度:** Critical
 - **描述:** ...
-- **建议修复:**
-  ```<language>
-  // 建议的修复代码
-  ```
-````
+- **建议修复:** ...
 
 ---
 
@@ -176,7 +156,6 @@ openspec/changes/<change-name>/session/CR-05_code_review.md
 ## 总体评价
 
 <对整个变更的总体质量评价，100字以内>
-
 ```
 
 ## Guardrails
@@ -186,4 +165,3 @@ openspec/changes/<change-name>/session/CR-05_code_review.md
 - **每个 MUST_FIX 给出具体修复建议** - 最好是代码片段
 - **不要审查 docs/ 和 openspec/ 下的文件** - 那是其他 Agent 的职责
 - **SUGGEST 不阻塞流程** - 只有 MUST_FIX 会回退
-```

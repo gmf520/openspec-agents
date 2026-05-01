@@ -41,7 +41,7 @@ states:
     description: 需求分析与方案探索
     executor: MainOrchestrator（唯一例外：亲自执行，与用户实时交互）
     scheduling: direct_execution
-    skill: agent-explore（作为探索立场参考）
+    agent_ref: orchestator-self（主 Agent 直接执行，非子 Agent 调度）
     artifacts:
       - REQ-01_requirement_analysis.md
       - DES-02_solution_design.md
@@ -57,7 +57,7 @@ states:
     executor: Create Agent（子 Agent，通过 Task 工具调度）
     scheduling: subagent_via_task
     agent: Create Agent
-    skill: agent-create
+    agent_ref: create-agent
     artifacts:
       - openspec/changes/<change-name>/proposal.md
       - openspec/changes/<change-name>/design.md
@@ -76,7 +76,7 @@ states:
     executor: Gate Review Agent（子 Agent，通过 Task 工具调度）
     scheduling: subagent_via_task
     agent: Gate Review Agent
-    skill: agent-gate-review
+    agent_ref: gate-review-agent
     artifacts:
       - GATE-03_gate_review.md
     transitions:
@@ -101,7 +101,7 @@ states:
     executor: Apply Agent（子 Agent，通过 Task 工具调度）
     scheduling: subagent_via_task
     agent: Apply Agent
-    skill: agent-apply
+    agent_ref: apply-agent
     artifacts:
       - DEV-04_development.md
     transitions:
@@ -117,7 +117,7 @@ states:
     executor: Code Review Agent（子 Agent，通过 Task 工具调度）
     scheduling: subagent_via_task
     agent: Code Review Agent
-    skill: agent-code-review
+    agent_ref: code-review-agent
     artifacts:
       - CR-05_code_review.md
     transitions:
@@ -133,7 +133,7 @@ states:
     executor: Test Agent（子 Agent，通过 Task 工具调度）
     scheduling: subagent_via_task
     agent: Test Agent
-    skill: agent-test
+    agent_ref: test-agent
     artifacts:
       - TEST-06_test_report.md
     transitions:
@@ -149,7 +149,7 @@ states:
     executor: Verify Agent（子 Agent，通过 Task 工具调度）
     scheduling: subagent_via_task
     agent: Verify Agent
-    skill: agent-verify
+    agent_ref: verify-agent
     artifacts:
       - VERIFY-07_verification_report.md
     transitions:
@@ -165,7 +165,7 @@ states:
     executor: Sync Agent（子 Agent，通过 Task 工具调度）
     scheduling: subagent_via_task
     agent: Sync Agent
-    skill: agent-sync
+    agent_ref: sync-agent
     artifacts:
       - openspec/specs/
     transitions:
@@ -191,7 +191,7 @@ states:
         actor: MainOrchestrator（亲自执行）
         action: 用户确认后，执行归档操作 + 更新 project-board.yaml
     agent: Archive Agent
-    skill: agent-archive
+    agent_ref: archive-agent
     artifacts:
       - openspec/changes/archive/<change-name>/
       - openspec/changes/<change-name>/session/DELIVERY_SUMMARY.md
