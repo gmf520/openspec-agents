@@ -1,0 +1,39 @@
+# 变更看板: create-todos-app
+# 每次阶段完成后更新此文件
+
+version: "1.0"
+
+# 当前活跃的变更
+active_changes: []
+
+# 已完成的变更历史
+completed_changes:
+  - name: create-todos-app
+    status: ARCHIVED
+    retry_counts:
+      EXPLORE: 0
+      CREATE: 0
+      GATE_REVIEW: 1
+      APPLY: 1
+      CODE_REVIEW: 1
+      TEST: 0
+      VERIFY: 0
+      SYNC: 0
+      ARCHIVE: 0
+    created_at: "2026-05-01T01:28:00+08:00"
+    archived_at: "2026-05-01T12:55:00+08:00"
+    archive_location: "openspec/changes/archive/2026-05-01-create-todos-app/"
+    summary: "创建一个基于 Vue 3 + TypeScript 的看板式 Todo 管理应用，含拖拽、搜索筛选、localStorage 持久化，共 13 个源文件 ~2000+ 行代码，经历 9 阶段工作流 2 次回退后交付"
+    artifacts:
+      requirement_analysis: "session/REQ-01_requirement_analysis.md"
+      solution_design: "session/DES-02_solution_design.md"
+      gate_review: "session/GATE-03_gate_review.md"
+      proposal: "proposal.md"
+      design: "design.md"
+      tasks: "tasks.md"
+      specs: "specs/"
+      development: "session/DEV-04_development.md"
+      code_review: "session/CR-05_code_review.md"
+      test_report: "session/TEST-06_test_report.md"
+      verification_report: "session/VERIFY-07_verification_report.md"
+      delivery_summary: "session/DELIVERY_SUMMARY.md"

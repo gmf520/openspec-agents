@@ -1,0 +1,16 @@
+# 依赖
+node_modules/
+*.tsbuildinfo
+
+# IDE 与编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+Thumbs.db
+.DS_Store
+
+# 日志
+*.log
+npm-debug.log*
