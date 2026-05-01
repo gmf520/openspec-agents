@@ -3,10 +3,40 @@
 
 version: "1.0"
 
+# ============================================================
+# MainOrchestrator 职责边界（最高优先级约束）
+# ============================================================
+orchestrator_constraints:
+  role: "唯一调度者，永不执行者（EXPLORE 阶段除外）"
+  allowed:
+    - 读取文件以了解上下文和状态
+    - 更新 project-board.yaml 状态和重试计数
+    - 根据状态机转换条件决定路由方向
+    - 通过 Task 工具调度子 Agent（传入 change-name 和上下文）
+    - 接收子 Agent 报告，评估转换条件，决定下一阶段
+    - 错误处理：根据 error_handling 策略执行回退
+    - 向用户汇报工作流状态和阶段完成情况
+  forbidden:
+    - 编写或修改任何代码文件（.ts, .vue, .js, .css, .html 等）
+    - 编写或修改任何规划制品（proposal.md, design.md, tasks.md, specs/）
+    - 编写或修改任何会话制品（REQ-01, DES-02, GATE-03, DEV-04, CR-05, TEST-06, VERIFY-07）
+    - 执行编译、测试、验证、同步、归档等操作命令
+    - 直接"代劳"任何子 Agent 的工作
+    - 对子 Agent 的产出进行"润色"或"补充修改"
+  exception:
+    stage: EXPLORE
+    reason: "需要与用户实时交互澄清需求，子 Agent 无法进行对话"
+    scope: "仅限 REQ-01_requirement_analysis.md 和 DES-02_solution_design.md"
+    note: "EXPLORE 完成后，MainOrchestrator 回归纯调度角色"
+
+# ============================================================
+# 状态定义
+# ============================================================
 states:
   - name: EXPLORE
-    description: 需求分析与方案探索（主 Agent 直接执行，非 Task 子 Agent）
-    executor: MainOrchestrator（亲自执行，与用户实时交互）
+    description: 需求分析与方案探索
+    executor: MainOrchestrator（唯一例外：亲自执行，与用户实时交互）
+    scheduling: direct_execution
     skill: agent-explore（作为探索立场参考）
     artifacts:
       - REQ-01_requirement_analysis.md
@@ -16,10 +46,12 @@ states:
         condition: user_confirmed_explore_output
       - target: EXPLORE
         condition: need_more_discussion
-    note: 此阶段不使用 Task 工具，由主 Agent 直接与用户交互
+    note: 此阶段不使用 Task 工具，由主 Agent 直接与用户交互。完成后立即回归纯调度角色。
 
   - name: CREATE
     description: 规划制品生成
+    executor: Create Agent（子 Agent，通过 Task 工具调度）
+    scheduling: subagent_via_task
     agent: Create Agent
     skill: agent-create
     artifacts:
@@ -33,9 +65,12 @@ states:
       - target: CREATE
         condition: artifacts_incomplete
     max_retries: 3
+    orchestrator_note: "MainOrchestrator 仅负责调度和接收报告，不参与制品生成"
 
   - name: GATE_REVIEW
     description: 8维度闸门审查
+    executor: Gate Review Agent（子 Agent，通过 Task 工具调度）
+    scheduling: subagent_via_task
     agent: Gate Review Agent
     skill: agent-gate-review
     artifacts:
@@ -48,9 +83,19 @@ states:
       - target: CREATE
         condition: gate_conditional_pass
     max_retries: 3
+    orchestrator_note: "MainOrchestrator 仅调度 Gate Review Agent，审查工作由子 Agent 独立完成"
+    enforcement:
+      conditional_pass_must_route_to_create: true
+      note: |
+        CONDITIONAL_PASS 时的条件项（C-###）必须由 Create Agent 修复。
+        MainOrchestrator 严禁自行修改 proposal/design/tasks/specs 等规划制品。
+        MainOrchestrator 的唯一职责是将条件项列表作为输入传给 Create Agent，
+        由 Create Agent 统一修复所有不一致并重新生成制品，必要时二次 Gate Review。
 
   - name: APPLY
     description: 代码实现
+    executor: Apply Agent（子 Agent，通过 Task 工具调度）
+    scheduling: subagent_via_task
     agent: Apply Agent
     skill: agent-apply
     artifacts:
@@ -61,9 +106,12 @@ states:
       - target: APPLY
         condition: compile_failed
     max_retries: 3
+    orchestrator_note: "MainOrchestrator 仅调度 Apply Agent，禁止自行编写或修改任何代码"
 
   - name: CODE_REVIEW
     description: 代码评审
+    executor: Code Review Agent（子 Agent，通过 Task 工具调度）
+    scheduling: subagent_via_task
     agent: Code Review Agent
     skill: agent-code-review
     artifacts:
@@ -74,9 +122,12 @@ states:
       - target: APPLY
         condition: has_must_fix
     max_retries: 3
+    orchestrator_note: "MainOrchestrator 仅调度 Code Review Agent，评审结论由子 Agent 独立做出"
 
   - name: TEST
     description: 测试验证
+    executor: Test Agent（子 Agent，通过 Task 工具调度）
+    scheduling: subagent_via_task
     agent: Test Agent
     skill: agent-test
     artifacts:
@@ -87,9 +138,12 @@ states:
       - target: APPLY
         condition: has_blocking_defect
     max_retries: 3
+    orchestrator_note: "MainOrchestrator 仅调度 Test Agent，禁止自行运行测试或修改测试代码"
 
   - name: VERIFY
     description: 完整验证
+    executor: Verify Agent（子 Agent，通过 Task 工具调度）
+    scheduling: subagent_via_task
     agent: Verify Agent
     skill: agent-verify
     artifacts:
@@ -100,9 +154,12 @@ states:
       - target: APPLY
         condition: has_fail
     max_retries: 3
+    orchestrator_note: "MainOrchestrator 仅调度 Verify Agent，验证工作由子 Agent 独立完成"
 
   - name: SYNC
     description: 规格同步
+    executor: Sync Agent（子 Agent，通过 Task 工具调度）
+    scheduling: subagent_via_task
     agent: Sync Agent
     skill: agent-sync
     artifacts:
@@ -113,9 +170,12 @@ states:
       - target: APPLY
         condition: sync_conflict
     max_retries: 3
+    orchestrator_note: "MainOrchestrator 仅调度 Sync Agent，禁止自行同步或修改 spec 文件"
 
   - name: ARCHIVE
     description: 变更归档
+    executor: Archive Agent（子 Agent，通过 Task 工具调度）
+    scheduling: subagent_via_task
     agent: Archive Agent
     skill: agent-archive
     artifacts:
@@ -124,9 +184,11 @@ states:
       - target: COMPLETE
         condition: archive_success
     max_retries: 3
+    orchestrator_note: "MainOrchestrator 仅调度 Archive Agent，归档操作由子 Agent 独立完成"
 
   - name: COMPLETE
-    description: 工作流完成
+    description: 工作流完成（终端状态，无子 Agent）
+    scheduling: terminal
     terminal: true
 
 # 闸门审查的8个维度

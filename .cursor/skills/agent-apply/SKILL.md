@@ -65,10 +65,18 @@ openspec instructions apply --change "<change-name>" --json
    - 执行 scripts/compile_check.ps1
    - 或等效的编译命令
 5. 编译结果处理:
-   ✅ 通过 → 标记任务完成 `- [ ]` → `- [x]`，继续下一个
+   ✅ 通过 → 使用 StrReplace 将 tasks.md 中对应行 `- [ ]` 改为 `- [x]`，继续下一个
    ❌ 失败 → 分析错误，自动修复，最多重试 3 次
    ❌ 3 次仍失败 → 停止，在 DEV-04 中记录失败原因
 ```
+
+**⚠️ 关键规则：tasks.md 打勾**
+
+每个任务编译通过后，必须立即更新 `openspec/changes/<change-name>/tasks.md` 文件，将该任务的 `- [ ]` 替换为 `- [x]`。
+
+- 使用 StrReplace 工具精确替换对应行
+- 不要使用 Shell 工具（sed/awk 等）修改 tasks.md
+- MAINOrchestrator 通过 tasks.md 的勾选状态判断进度，未打勾 = 未完成
 
 ### Step 3: 编译检查脚本
 
@@ -84,7 +92,11 @@ Java:        mvn compile 或 gradle compileJava
 
 ### Step 4: 生成开发记录
 
-输出 `DEV-04_development.md`：
+输出 `DEV-04_development.md`。
+
+**在生成 DEV-04 之前，必须验证 tasks.md：**
+
+使用 Grep 工具搜索 `openspec/changes/<change-name>/tasks.md` 中的 `- [ ]`，确认不存在未打勾的任务。若存在 `- [ ]`，说明有遗漏，必须补做后重新验证。
 
 ```markdown
 # 开发记录: <change-name>
@@ -162,5 +174,6 @@ Java:        mvn compile 或 gradle compileJava
 - **读取上下文文件** - 从 openspec apply instructions 获得准确的文件列表
 - **不要回退已完成任务** - 如果新任务导致旧功能出问题，先尝试修复新任务
 - **失败不要隐藏** - 如实记录所有编译失败和修复过程
+- **tasks.md 必须实时打勾** - 每个任务编译通过后立即用 StrReplace 更新 tasks.md 的 `- [ ]` → `- [x]`，不可积累到阶段结束统一打勾
 
 ```

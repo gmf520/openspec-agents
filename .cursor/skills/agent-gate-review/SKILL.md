@@ -116,7 +116,9 @@ openspec/changes/<change-name>/session/GATE-03_gate_review.md
 
 ```
 有非阻塞的改进建议，但无硬伤。
-→ 列出条件，MainOrchestrator 评估后决定
+→ 列出条件项（C-###），含具体修复指引
+→ MainOrchestrator 必须将条件项作为输入传给 Create Agent，由 Create Agent 修复
+→ MainOrchestrator 严禁自行修改规划制品（proposal/design/tasks/specs）
 → 条件应包括修复项和完成时限
 ```
 
@@ -185,6 +187,20 @@ openspec/changes/<change-name>/session/GATE-03_gate_review.md
 - **维度:** <dimension>
 - **描述:** ...
 - **优先级:** 低/中
+
+---
+
+## 下一步行动
+
+<!-- ⚠️ 本条仅供 MainOrchestrator 阅读，不构成审查结论的一部分 -->
+
+**若是 CONDITIONAL_PASS：**
+→ MainOrchestrator 必须将上述条件项（C-###）传给 **Create Agent**，由 Create Agent 修复不一致
+→ 严禁 MainOrchestrator 自行修改 proposal/design/tasks/specs 等规划制品
+→ Create Agent 修复完毕后，评估是否需要二次 Gate Review
+
+**若是 BLOCKED：**
+→ 明确回退方向：需求不清晰 → EXPLORE / 设计有缺陷 → CREATE
 ```
 
 ## Guardrails
@@ -193,3 +209,4 @@ openspec/changes/<change-name>/session/GATE-03_gate_review.md
 - **明确阻塞 vs 建议** - BLOCKED 项必须是非改不可的硬伤
 - **每个阻塞项必须给出修复建议** - 不止于指出问题
 - **总分不是唯一标准** - 单个维度 BLOCKED 即整体 BLOCKED
+- **条件项由 Create Agent 修复** - MainOrchestrator 不得自行修改规划制品，必须将条件项列表传给 Create Agent 执行修复
