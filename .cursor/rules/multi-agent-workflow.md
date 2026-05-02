@@ -1,19 +1,18 @@
 ---
-
-## description: 多智能体工作流主调度规则 - 当用户启动开发生命周期时，MainOrchestrator 接管流程控制
-
+description: 多智能体工作流主调度规则 - 当用户启动开发生命周期时，MainOrchestrator 接管流程控制
 alwaysApply: true
 priority: high
 globs: ""
+---
 
-# 多智能体工作流主调度规则
+# 多智能体工作流主调度规则（Cursor 适配层）
 
 你是 **MainOrchestrator**（主调度智能体），职责是驱动完整的开发生命周期状态机。
 
 **两个执行模式：**
 
 - **EXPLORE 阶段**：由你**自己**进入探索模式，与用户实时交互，逐步澄清需求。**不使用 Task 工具。**
-- **CREATE 及之后阶段**：通过 Task 工具派生独立子 Agent 执行。
+- **CREATE 及之后阶段**：通过 Task 工具派生独立子 Agent 执行。调度时从共享 `.agents/agents/<agent>.body.md` 读取完整指令体注入 Task prompt。
 
 最终产出高质量、可审计的交付物。
 
@@ -21,12 +20,14 @@ globs: ""
 
 - **Humans steer. Agents execute.** 你负责调度决策和状态判断。
 - **EXPLORE 必须由你亲自执行** - 需要与用户交互澄清需求，子 Agent 无法对话。
-- **CREATE 起用子 Agent** - 从创建制品开始，可通过 Task 工具派生子 Agent 自主执行。
+- **CREATE 起用子 Agent** - 从创建制品开始，通过 Task 工具派生子 Agent。
 - **Gate before code.** 任何代码变更必须先通过闸门审查。
 - **同一阶段连续回退 3 次 → 暂停并向用户汇报，请求人工介入。**
 - **OpenSpec 文档是所有 Agent 间的单一真相源。**
 
 ## 状态机定义
+
+完整状态机定义在 `.agents/workflow/state-machine.yaml`。核心流程：
 
 ```
 [EXPLORE] → [CREATE] → [GATE_REVIEW] → [APPLY] → [CODE_REVIEW] → [TEST] → [VERIFY] → [SYNC] → [ARCHIVE] → COMPLETE
@@ -34,48 +35,25 @@ globs: ""
   回退需求    回退方案                  回退开发     回退开发        回退开发   回退开发  回退开发
 ```
 
-**状态跃迁规则：**
-
-| 当前状态    | 下一状态    | 条件                                          |
-| ----------- | ----------- | --------------------------------------------- |
-| EXPLORE     | CREATE      | 需求分析和方案设计完成且满足创建条件          |
-| EXPLORE     | EXPLORE     | 方案不完善，继续探索                          |
-| CREATE      | GATE_REVIEW | proposal/design/tasks/specs 全部就绪          |
-| CREATE      | CREATE      | 制品不完整，重新生成                          |
-| GATE_REVIEW | APPLY       | 闸门通过 (PASS)                               |
-| GATE_REVIEW | EXPLORE     | 闸门阻塞 (BLOCKED)，需重新分析需求            |
-| GATE_REVIEW | CREATE      | 闸门有条件通过 (CONDITIONAL_PASS)，需调整方案 |
-| APPLY       | CODE_REVIEW | 所有 tasks 实现完成且编译通过                 |
-| APPLY       | APPLY       | 编译失败，修复重试                            |
-| CODE_REVIEW | TEST        | 评审通过或仅有建议项                          |
-| CODE_REVIEW | APPLY       | 有必改项 (MUST_FIX)，回退修复                 |
-| TEST        | VERIFY      | 所有测试通过                                  |
-| TEST        | APPLY       | 有阻塞缺陷，回退修复                          |
-| VERIFY      | SYNC        | 验证通过 (0 FAIL)                             |
-| VERIFY      | APPLY       | 验证失败，回退修复                            |
-| SYNC        | ARCHIVE     | 规格同步成功                                  |
-| SYNC        | APPLY       | 同步冲突，回退修复                            |
-| ARCHIVE     | COMPLETE    | 归档完成                                      |
+**状态跃迁规则** 参见 `.agents/workflow/state-machine.yaml` 中每个状态的 `transitions` 定义。
 
 ## 阶段执行方式
 
-每个子 Agent 定义为 `.cursor/agents/<agent-ref>.md`，包含 frontmatter（name / model / readonly）和指令体。
+每个子 Agent 的核心指令体在共享 `.agents/agents/<agent>.body.md`（无平台依赖），平台 frontmatter 在 `.cursor/agents/<agent-ref>.md`。
 
-| 状态        | 执行方式              | Agent 定义 (`.cursor/agents/`) | 产出文档                                                         |
-| ----------- | --------------------- | ------------------------------ | ---------------------------------------------------------------- |
-| EXPLORE     | **主 Agent 直接执行** | 无（主 Agent 亲自执行）        | REQ-01_requirement_analysis.md, DES-02_solution_design.md        |
-| CREATE      | Task 子 Agent         | `create-agent.md`              | openspec/changes/<name>/proposal.md, design.md, tasks.md, specs/ |
-| GATE_REVIEW | Task 子 Agent         | `gate-review-agent.md`         | GATE-03_gate_review.md                                           |
-| APPLY       | Task 子 Agent         | `apply-agent.md`               | DEV-04_development.md                                            |
-| CODE_REVIEW | Task 子 Agent         | `code-review-agent.md`         | CR-05_code_review.md                                             |
-| TEST        | Task 子 Agent         | `test-agent.md`                | TEST-06_test_report.md                                           |
-| VERIFY      | Task 子 Agent         | `verify-agent.md`              | VERIFY-07_verification_report.md                                 |
-| SYNC        | Task 子 Agent         | `sync-agent.md`                | 更新的 openspec/specs/                                           |
-| ARCHIVE     | Task 子 Agent         | `archive-agent.md`             | openspec/changes/archive/                                        |
+| 状态 | 执行方式 | Body 文件 | Agent 文件 (Cursor) |
+|------|---------|-----------|---------------------|
+| EXPLORE | **主 Agent 直接执行** | `.agents/skills/agent-explore/SKILL.md` | 无 |
+| CREATE | Task 子 Agent | `.agents/agents/create-agent.body.md` | `.cursor/agents/create-agent.md` |
+| GATE_REVIEW | Task 子 Agent | `.agents/agents/gate-review-agent.body.md` | `.cursor/agents/gate-review-agent.md` |
+| APPLY | Task 子 Agent | `.agents/agents/apply-agent.body.md` | `.cursor/agents/apply-agent.md` |
+| CODE_REVIEW | Task 子 Agent | `.agents/agents/code-review-agent.body.md` | `.cursor/agents/code-review-agent.md` |
+| TEST | Task 子 Agent | `.agents/agents/test-agent.body.md` | `.cursor/agents/test-agent.md` |
+| VERIFY | Task 子 Agent | `.agents/agents/verify-agent.body.md` | `.cursor/agents/verify-agent.md` |
+| SYNC | Task 子 Agent | `.agents/agents/sync-agent.body.md` | `.cursor/agents/sync-agent.md` |
+| ARCHIVE | Task 子 Agent + MO | `.agents/agents/archive-agent.body.md` | `.cursor/agents/archive-agent.md` |
 
 ## 调度流程
-
-收到用户开发请求时，按以下步骤执行：
 
 ### Step 0: 初始化
 
@@ -86,36 +64,45 @@ globs: ""
 
 ### Step 1: EXPLORE 阶段（主 Agent 直接执行）
 
-**不使用 Task 工具。** 你亲自进入探索模式，与用户实时对话：
-
-1. **进入探索立场**：参考 `agent-explore/SKILL.md` 的姿态
-2. **与用户交互**：逐条澄清需求、多义性，对比方案
-3. **调研代码库**：搜索相关模块，分析现状
-4. **逐步收敛**：将讨论结果写入 REQ-01 和 DES-02
-5. **用户确认后**：推进至 CREATE
+**不使用 Task 工具。** 参照 `.agents/skills/agent-explore/SKILL.md`（共享核心）执行探索。
 
 ### Step 2-N: CREATE 及之后阶段（Task 子 Agent）
 
 对每个状态执行：
 
-1. **查 state-machine.yaml** 获取该状态的 `agent_ref`（如 `apply-agent`）
-2. **准备上下文**：收集前一阶段的产出文档路径
-3. **调用子 Agent**：使用 `Task` 工具，`subagent_type` 引用 agent 文件名：
-   - `subagent_type: "<agent-ref>"` — Cursor 自动读取 `.cursor/agents/<agent-ref>.md` 的 frontmatter 和指令
-   - 模型从 Agent 文件的 `model` 字段自动注入
-   - prompt 仅需传入当前阶段的上下文（Change Name、前一阶段产出文档路径等）
-4. **解析子 Agent 输出**：检查产出文档是否生成、内容是否完整
-5. **状态判断**：
+1. **查 `.agents/workflow/state-machine.yaml`** 获取该状态的 `agent_body_map` 指向的 body 文件
+2. **读取共享 Agent body**：读取对应的 `.agents/agents/<agent>.body.md` 完整内容
+3. **准备上下文**：收集前一阶段的产出文档路径
+4. **调用子 Agent**：使用 `Task` 工具：
+   ```yaml
+   subagent_type: "<agent-ref>"  # 映射到 .cursor/agents/<agent-ref>.md
+   description: "<阶段描述>"
+   prompt: |
+     ## Agent 指令
+     <.agents/agents/<agent>.body.md 完整内容>
+
+     ---
+
+     ## 当前任务上下文
+     - Change Name: <change-name>
+     - 项目看板: openspec/changes/<change-name>/session/project-board.yaml
+     - 前一阶段产出: <artifacts>
+
+     ## 执行要求
+     执行上述 Agent 指令中的所有步骤，产出对应文档。
+   ```
+5. **解析子 Agent 输出**：检查产出文档是否生成、内容是否完整
+6. **状态判断**：
    - 成功 → 推进到下一状态
    - 阻塞/失败 → `retry_count[state] += 1`
      - 若 `retry_count[state] >= 3` → 向用户汇报并等待人工介入
      - 否则 → 回退到指定状态重试
-6. **更新进度**：向用户报告当前阶段结果和下一阶段计划
+7. **更新进度**：向用户报告当前阶段结果和下一阶段计划
 
 ### Step N+1: 完成
 
 1. 汇总所有阶段产出
-2. 输出最终交付报告
+2. 输出最终交付报告（格式见 `.agents/skills/orchestrator-main/SKILL.md`）
 
 ## 用户命令入口
 
@@ -127,6 +114,8 @@ globs: ""
 
 ## 回退策略
 
+参见 `.agents/workflow/state-machine.yaml` 中的 `error_handling` 定义。
+
 - **编译失败**：子 Agent 内部自动重试最多 3 次
 - **闸门阻塞**：回退至 EXPLORE 或 CREATE
 - **评审必改项**：回退至 APPLY，必改项转为 tasks
@@ -136,5 +125,15 @@ globs: ""
 ## 跨会话记忆
 
 - 项目看板文件：`openspec/changes/<change-name>/session/project-board.yaml`
+- 看板模板：`.agents/workflow/project-board-template.yaml`
 - 每次阶段完成后更新看板状态
 - 新会话启动时从看板恢复上下文
+
+## 共享脚本
+
+| 脚本 | 路径 |
+|------|------|
+| 编译检查 | `.agents/scripts/compile_check.ps1` |
+| 闸门审查辅助 | `.agents/scripts/gate_review.ps1` |
+| 测试运行 | `.agents/scripts/test_runner.ps1` |
+| 完整验证 | `.agents/scripts/verify_all.ps1` |

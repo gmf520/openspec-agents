@@ -1,5 +1,6 @@
 # 多智能体工作流状态机定义
 # 用于 MainOrchestrator 驱动开发生命周期
+# 平台无关——编排器从各平台的适配层读取调度方式
 
 version: "1.0"
 
@@ -12,7 +13,7 @@ orchestrator_constraints:
     - 读取文件以了解上下文和状态
     - 更新 project-board.yaml 状态和重试计数
     - 根据状态机转换条件决定路由方向
-    - 通过 Task 工具调度子 Agent（传入 change-name 和上下文）
+    - 通过平台工具调度子 Agent（传入 change-name 和上下文）
     - 接收子 Agent 报告，评估转换条件，决定下一阶段
     - 错误处理：根据 error_handling 策略执行回退
     - 向用户汇报工作流状态和阶段完成情况
@@ -41,7 +42,7 @@ states:
     description: 需求分析与方案探索
     executor: MainOrchestrator（唯一例外：亲自执行，与用户实时交互）
     scheduling: direct_execution
-    agent_ref: orchestator-self（主 Agent 直接执行，非子 Agent 调度）
+    agent_body: .agents/skills/agent-explore/SKILL.md
     artifacts:
       - REQ-01_requirement_analysis.md
       - DES-02_solution_design.md
@@ -50,14 +51,13 @@ states:
         condition: user_confirmed_explore_output
       - target: EXPLORE
         condition: need_more_discussion
-    note: 此阶段不使用 Task 工具，由主 Agent 直接与用户交互。完成后立即回归纯调度角色。
+    note: 此阶段不使用子 Agent 调度工具，由主 Agent 直接与用户交互。完成后立即回归纯调度角色。
 
   - name: CREATE
     description: 规划制品生成
-    executor: Create Agent（子 Agent，通过 Task 工具调度）
+    executor: Create Agent（子 Agent）
     scheduling: subagent_via_task
-    agent: Create Agent
-    agent_ref: create-agent
+    agent_body: .agents/agents/create-agent.body.md
     artifacts:
       - openspec/changes/<change-name>/proposal.md
       - openspec/changes/<change-name>/design.md
@@ -73,10 +73,9 @@ states:
 
   - name: GATE_REVIEW
     description: 8维度闸门审查
-    executor: Gate Review Agent（子 Agent，通过 Task 工具调度）
+    executor: Gate Review Agent（子 Agent）
     scheduling: subagent_via_task
-    agent: Gate Review Agent
-    agent_ref: gate-review-agent
+    agent_body: .agents/agents/gate-review-agent.body.md
     artifacts:
       - GATE-03_gate_review.md
     transitions:
@@ -98,10 +97,9 @@ states:
 
   - name: APPLY
     description: 代码实现
-    executor: Apply Agent（子 Agent，通过 Task 工具调度）
+    executor: Apply Agent（子 Agent）
     scheduling: subagent_via_task
-    agent: Apply Agent
-    agent_ref: apply-agent
+    agent_body: .agents/agents/apply-agent.body.md
     artifacts:
       - DEV-04_development.md
     transitions:
@@ -114,10 +112,9 @@ states:
 
   - name: CODE_REVIEW
     description: 代码评审
-    executor: Code Review Agent（子 Agent，通过 Task 工具调度）
+    executor: Code Review Agent（子 Agent）
     scheduling: subagent_via_task
-    agent: Code Review Agent
-    agent_ref: code-review-agent
+    agent_body: .agents/agents/code-review-agent.body.md
     artifacts:
       - CR-05_code_review.md
     transitions:
@@ -130,10 +127,9 @@ states:
 
   - name: TEST
     description: 测试验证
-    executor: Test Agent（子 Agent，通过 Task 工具调度）
+    executor: Test Agent（子 Agent）
     scheduling: subagent_via_task
-    agent: Test Agent
-    agent_ref: test-agent
+    agent_body: .agents/agents/test-agent.body.md
     artifacts:
       - TEST-06_test_report.md
     transitions:
@@ -146,10 +142,9 @@ states:
 
   - name: VERIFY
     description: 完整验证
-    executor: Verify Agent（子 Agent，通过 Task 工具调度）
+    executor: Verify Agent（子 Agent）
     scheduling: subagent_via_task
-    agent: Verify Agent
-    agent_ref: verify-agent
+    agent_body: .agents/agents/verify-agent.body.md
     artifacts:
       - VERIFY-07_verification_report.md
     transitions:
@@ -166,7 +161,7 @@ states:
     scheduling: hybrid
     workflow:
       - step: 1
-        actor: Archive Agent（通过 Task 工具调度）
+        actor: Archive Agent（通过子 Agent 调度）
         action: 归档前检查 + 生成交付总结 DELIVERY_SUMMARY.md
       - step: 2
         actor: MainOrchestrator
@@ -174,8 +169,7 @@ states:
       - step: 3
         actor: MainOrchestrator（亲自执行）
         action: 用户确认后，执行 specs 同步 + 归档操作 + 更新 project-board.yaml（使用归档后新路径）
-    agent: Archive Agent
-    agent_ref: archive-agent
+    agent_body: .agents/agents/archive-agent.body.md
     artifacts:
       - openspec/changes/archive/<change-name>/
       - openspec/changes/<change-name>/session/DELIVERY_SUMMARY.md
@@ -215,3 +209,15 @@ error_handling:
     action: rollback_to_apply
   verify_fail:
     action: rollback_to_apply
+
+# Agent body 文件路径映射（编排器根据阶段读取对应的指令体）
+agent_body_map:
+  EXPLORE: .agents/skills/agent-explore/SKILL.md
+  CREATE: .agents/agents/create-agent.body.md
+  GATE_REVIEW: .agents/agents/gate-review-agent.body.md
+  APPLY: .agents/agents/apply-agent.body.md
+  CODE_REVIEW: .agents/agents/code-review-agent.body.md
+  TEST: .agents/agents/test-agent.body.md
+  VERIFY: .agents/agents/verify-agent.body.md
+  SYNC: .agents/agents/sync-agent.body.md
+  ARCHIVE: .agents/agents/archive-agent.body.md

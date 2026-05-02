@@ -23,6 +23,9 @@ elseif (Test-Path "Cargo.toml") {
 elseif (Test-Path "go.mod") {
     $projectType = "go"
 }
+elseif (Test-Path "pubspec.yaml") {
+    $projectType = "dart"
+}
 elseif (Test-Path "pom.xml") {
     $projectType = "maven"
 }
@@ -31,6 +34,26 @@ elseif (Test-Path "build.gradle" -or (Test-Path "build.gradle.kts")) {
 }
 elseif (Test-Path "requirements.txt" -or (Test-Path "pyproject.toml") -or (Test-Path "setup.py")) {
     $projectType = "python"
+}
+elseif (Test-Path "composer.json") {
+    $projectType = "php"
+}
+elseif (Test-Path "Gemfile") {
+    $projectType = "ruby"
+}
+elseif (Test-Path "mix.exs") {
+    $projectType = "elixir"
+}
+elseif (Test-Path "CMakeLists.txt") {
+    $projectType = "cpp"
+}
+elseif ((Get-ChildItem -Filter "*.csproj" -ErrorAction SilentlyContinue) -or 
+    (Get-ChildItem -Filter "*.fsproj" -ErrorAction SilentlyContinue) -or 
+    (Get-ChildItem -Filter "*.sln" -ErrorAction SilentlyContinue)) {
+    $projectType = "dotnet"
+}
+elseif (Test-Path "Package.swift") {
+    $projectType = "swift"
 }
 else {
     Write-Host "⚠️  未检测到已知项目类型，尝试通用检查..." -ForegroundColor Yellow
@@ -149,22 +172,133 @@ switch ($projectType) {
             $result | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
         }
     }
-    default {
-        Write-Host "⚠️  无法确定编译命令，跳过编译检查" -ForegroundColor Yellow
-        "dotnet" {
-            Write-Host "🔨 .NET 编译检查..." -ForegroundColor White
-            $dotnetCmd = if ($Quick) { "dotnet build --no-restore" } else { "dotnet build" }
-            $result = Invoke-Expression $dotnetCmd 2>&1
-            $exitCode = $LASTEXITCODE
+    "php" {
+        Write-Host "🔨 PHP 语法检查..." -ForegroundColor White
+        $phpFiles = Get-ChildItem -Recurse -Include "*.php" -Exclude "vendor" -ErrorAction SilentlyContinue
+        if ($phpFiles) {
+            $hasError = $false
+            foreach ($file in $phpFiles) {
+                $result = php -l $file.FullName 2>&1
+                if ($LASTEXITCODE -ne 0) {
+                    $hasError = $true
+                    Write-Host "  ❌ $($file.Name): $result" -ForegroundColor Red
+                }
+            }
+            if (-not $hasError) {
+                Write-Host "✅ PHP 语法检查通过" -ForegroundColor Green
+            }
+            $exitCode = if ($hasError) { 1 } else { 0 }
+        }
+        else {
+            Write-Host "ℹ️  无 PHP 文件，跳过检查" -ForegroundColor Yellow
+            $exitCode = 0
+        }
+    }
+    "ruby" {
+        Write-Host "🔨 Ruby 语法检查..." -ForegroundColor White
+        $rbFiles = Get-ChildItem -Recurse -Include "*.rb" -Exclude "vendor" -ErrorAction SilentlyContinue
+        if ($rbFiles) {
+            $hasError = $false
+            foreach ($file in $rbFiles) {
+                $result = ruby -c $file.FullName 2>&1
+                if ($LASTEXITCODE -ne 0) {
+                    $hasError = $true
+                    Write-Host "  ❌ $($file.Name): $result" -ForegroundColor Red
+                }
+            }
+            if (-not $hasError) {
+                Write-Host "✅ Ruby 语法检查通过" -ForegroundColor Green
+            }
+            $exitCode = if ($hasError) { 1 } else { 0 }
+        }
+        else {
+            Write-Host "ℹ️  无 Ruby 文件，跳过检查" -ForegroundColor Yellow
+            $exitCode = 0
+        }
+    }
+    "dart" {
+        Write-Host "🔨 Dart 静态分析..." -ForegroundColor White
+        $analyzer = if (Get-Command "flutter" -ErrorAction SilentlyContinue) { "flutter" } else { "dart" }
+        $result = & $analyzer analyze 2>&1
+        $exitCode = $LASTEXITCODE
         
-            if ($exitCode -eq 0) {
-                Write-Host "✅ .NET 编译通过" -ForegroundColor Green
+        if ($exitCode -eq 0) {
+            Write-Host "✅ Dart 静态分析通过" -ForegroundColor Green
+        }
+        else {
+            Write-Host "❌ Dart 静态分析发现问题:" -ForegroundColor Red
+            $result | Select-Object -Last 20 | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+        }
+    }
+    "elixir" {
+        Write-Host "🔨 Elixir 编译检查..." -ForegroundColor White
+        $result = mix compile --warnings-as-errors 2>&1
+        $exitCode = $LASTEXITCODE
+        
+        if ($exitCode -eq 0) {
+            Write-Host "✅ Elixir 编译通过" -ForegroundColor Green
+        }
+        else {
+            Write-Host "❌ Elixir 编译失败:" -ForegroundColor Red
+            $result | Select-Object -Last 20 | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+        }
+    }
+    "cpp" {
+        Write-Host "🔨 C/C++ (CMake) 编译检查..." -ForegroundColor White
+        if (Test-Path "build") {
+            $result = cmake --build build 2>&1
+            $exitCode = $LASTEXITCODE
+        }
+        else {
+            Write-Host "  ℹ️  未找到 build 目录，执行 cmake 配置..." -ForegroundColor Yellow
+            $null = cmake -B build 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "❌ CMake 配置失败" -ForegroundColor Red
+                $exitCode = 1
             }
             else {
-                Write-Host "❌ .NET 编译失败:" -ForegroundColor Red
-                $result | Select-Object -Last 30 | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+                $result = cmake --build build 2>&1
+                $exitCode = $LASTEXITCODE
             }
         }
+        
+        if ($exitCode -eq 0) {
+            Write-Host "✅ C/C++ 编译通过" -ForegroundColor Green
+        }
+        else {
+            Write-Host "❌ C/C++ 编译失败:" -ForegroundColor Red
+            $result | Select-Object -Last 30 | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+        }
+    }
+    "swift" {
+        Write-Host "🔨 Swift 编译检查..." -ForegroundColor White
+        $result = swift build 2>&1
+        $exitCode = $LASTEXITCODE
+        
+        if ($exitCode -eq 0) {
+            Write-Host "✅ Swift 编译通过" -ForegroundColor Green
+        }
+        else {
+            Write-Host "❌ Swift 编译失败:" -ForegroundColor Red
+            $result | Select-Object -Last 20 | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+        }
+    }
+    "dotnet" {
+        Write-Host "🔨 .NET 编译检查..." -ForegroundColor White
+        $dotnetCmd = if ($Quick) { "dotnet build --no-restore" } else { "dotnet build" }
+        $result = Invoke-Expression $dotnetCmd 2>&1
+        $exitCode = $LASTEXITCODE
+    
+        if ($exitCode -eq 0) {
+            Write-Host "✅ .NET 编译通过" -ForegroundColor Green
+        }
+        else {
+            Write-Host "❌ .NET 编译失败:" -ForegroundColor Red
+            $result | Select-Object -Last 30 | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+        }
+    }
+    default {
+        Write-Host "⚠️  无法确定编译命令，跳过编译检查" -ForegroundColor Yellow
         $exitCode = 0
     }
 }
@@ -180,7 +314,5 @@ else {
     Write-Host "  编译检查: FAIL ($exitCode)" -ForegroundColor Red
     Write-Host "═══════════════════════════════════════" -ForegroundColor Red
 }
-
-exit $exitCode
 
 exit $exitCode
