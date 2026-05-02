@@ -17,20 +17,27 @@ metadata:
 
 ## Claude Code 平台调度机制
 
-Claude Code 使用 **Agent 工具** 派生子 Agent。子 Agent 在 `.claude/agents/` 目录中以 YAML frontmatter 注册（name、description、tools、model）。Agent 指令体在 frontmatter 之后，由 Claude Code 原生 Agent 系统自动读取，无需编排器手动注入。
+Claude Code 使用 **Agent 工具** 派生子 Agent。子 Agent 元数据（name、tools、model）定义在 `.claude/agents/<agent>.md` 的 YAML frontmatter 中，指令体定义在共享 `.agents/agents/<agent>.body.md` 中。
 
-**调度模式**：编排器只传递任务上下文（change-name + 前一阶段产出路径），Agent 指令由注册文件提供。使用 `isolation: "worktree"` 和 `run_in_background: true` 确保子 Agent 在独立 CLI 子进程中执行。
+**调度模式**：
+1. 读取 `.claude/agents/<agent>.md` → 解析 frontmatter 获取 tools、model
+2. 读取 `.agents/agents/<agent>.body.md` → 获取完整指令体
+3. 组装 prompt：指令体 + 上下文
+4. 使用 `run_in_background: true` 确保独立进程执行
 
-### Agent 调度语法
+**隔离策略**：
+- `run_in_background: true` — 所有 Agent 使用，确保独立上下文窗口
+- `isolation: "worktree"` — **仅 apply-agent** 使用，其余 Agent 为只读或仅写 session 目录
+
+### Agent 调度语法（通用，不含 worktree）
 
 ```json
 Agent({
   subagent_type: "general-purpose",
-  model: "<opus|sonnet|haiku>",
+  model: "<从 .claude/agents/ frontmatter 读取>",
   description: "<当前阶段简短描述>",
-  isolation: "worktree",
   run_in_background: true,
-  prompt: "## 当前任务上下文\n\n- Change Name: <change-name>\n- 项目看板: openspec/changes/<change-name>/session/project-board.yaml\n- 前一阶段产出: <artifacts>\n\n## 执行要求\n执行你在 .claude/agents/ 中注册的 Agent 定义中的所有步骤，产出对应文档。"
+  prompt: "## Agent 指令\n\n<.agents/agents/<agent>.body.md 完整内容>\n\n---\n\n## 当前任务上下文\n\n- Change Name: <change-name>\n- 项目看板: openspec/changes/<change-name>/session/project-board.yaml\n- 前一阶段产出: <artifacts>\n\n## 执行要求\n执行上述 Agent 指令中的所有步骤，产出对应文档。"
 })
 ```
 
@@ -66,12 +73,13 @@ Claude Code 适配层使用项目根 `scripts/` 目录下的共享脚本：
 
 ## 调度步骤（CREATE 起）
 
-1. 查 `.agents/workflow/state-machine.yaml` 中 `agent_body_map` 获取当前阶段的注册文件路径
-2. 查找上方映射表获取对应的 Claude Code 模型
-3. 组装上下文 prompt（只包含 change-name + 前一阶段产出路径，不含 Agent 指令）
-4. 使用 Claude Code Agent 工具调度（Agent 指令由 `.claude/agents/` 注册文件提供）
+1. 查 `.agents/workflow/state-machine.yaml` 中 `agent_body_map` 获取当前阶段的 body 文件路径
+2. 读取 `.claude/agents/<agent>.md` 的 YAML frontmatter，获取 tools、model 元数据
+3. 读取 `.agents/agents/<agent>.body.md` 的完整指令体
+4. 组装 prompt：指令体 + 上下文（change-name + 前一阶段产出路径）
+5. 使用 Claude Code Agent 工具调度
 
-### APPLY 阶段调度示例
+### APPLY 阶段调度示例（唯一使用 worktree 隔离的阶段）
 
 ```json
 Agent({
@@ -80,7 +88,7 @@ Agent({
   description: "代码实现: add-dark-mode",
   isolation: "worktree",
   run_in_background: true,
-  prompt: "## 当前任务上下文\n\n- Change Name: add-dark-mode\n- 项目看板: openspec/changes/add-dark-mode/session/project-board.yaml\n- 闸门审查结论: openspec/changes/add-dark-mode/session/GATE-03_gate_review.md\n\n## 执行要求\n执行你在 .claude/agents/apply-agent.md 中注册的 Agent 定义中的所有步骤，产出对应文档。"
+  prompt: "## Agent 指令\n\n<.agents/agents/apply-agent.body.md 完整内容>\n\n---\n\n## 当前任务上下文\n\n- Change Name: add-dark-mode\n- 项目看板: openspec/changes/add-dark-mode/session/project-board.yaml\n- 闸门审查结论: openspec/changes/add-dark-mode/session/GATE-03_gate_review.md\n\n## 执行要求\n执行上述 Agent 指令中的所有步骤，产出对应文档。"
 })
 ```
 
@@ -91,9 +99,8 @@ Agent({
   subagent_type: "general-purpose",
   model: "opus",
   description: "代码审查: add-dark-mode",
-  isolation: "worktree",
   run_in_background: true,
-  prompt: "## 当前任务上下文\n\n- Change Name: add-dark-mode\n- 项目看板: openspec/changes/add-dark-mode/session/project-board.yaml\n- 开发记录: openspec/changes/add-dark-mode/session/DEV-04_development.md\n\n## 执行要求\n执行你在 .claude/agents/code-review-agent.md 中注册的 Agent 定义中的所有步骤，产出对应文档。"
+  prompt: "## Agent 指令\n\n<.agents/agents/code-review-agent.body.md 完整内容>\n\n---\n\n## 当前任务上下文\n\n- Change Name: add-dark-mode\n- 项目看板: openspec/changes/add-dark-mode/session/project-board.yaml\n- 开发记录: openspec/changes/add-dark-mode/session/DEV-04_development.md\n\n## 执行要求\n执行上述 Agent 指令中的所有步骤，产出对应文档。"
 })
 ```
 
@@ -104,9 +111,8 @@ Agent({
   subagent_type: "general-purpose",
   model: "haiku",
   description: "测试验证: add-dark-mode",
-  isolation: "worktree",
   run_in_background: true,
-  prompt: "## 当前任务上下文\n\n- Change Name: add-dark-mode\n- 项目看板: openspec/changes/add-dark-mode/session/project-board.yaml\n- 开发记录: openspec/changes/add-dark-mode/session/DEV-04_development.md\n- 代码审查: openspec/changes/add-dark-mode/session/CR-05_code_review.md\n\n## 执行要求\n执行你在 .claude/agents/test-agent.md 中注册的 Agent 定义中的所有步骤，产出对应文档。"
+  prompt: "## Agent 指令\n\n<.agents/agents/test-agent.body.md 完整内容>\n\n---\n\n## 当前任务上下文\n\n- Change Name: add-dark-mode\n- 项目看板: openspec/changes/add-dark-mode/session/project-board.yaml\n- 开发记录: openspec/changes/add-dark-mode/session/DEV-04_development.md\n- 代码审查: openspec/changes/add-dark-mode/session/CR-05_code_review.md\n\n## 执行要求\n执行上述 Agent 指令中的所有步骤，产出对应文档。"
 })
 ```
 

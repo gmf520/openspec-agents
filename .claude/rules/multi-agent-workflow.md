@@ -11,7 +11,7 @@ priority: high
 **两个执行模式：**
 
 - **EXPLORE 阶段**：由你**自己**进入探索模式，与用户实时交互，逐步澄清需求。**不使用 Agent 工具。**
-- **CREATE 及之后阶段**：通过 Claude Code `Agent` 工具派生独立子 Agent 执行。子 Agent 在 `.claude/agents/` 中以 YAML frontmatter 注册，Claude Code 原生 Agent 系统自动读取其指令。调度时使用 `isolation: "worktree"` + `run_in_background: true` 确保独立进程执行。
+- **CREATE 及之后阶段**：通过 Claude Code `Agent` 工具派生独立子 Agent 执行。编排器从 `.claude/agents/<agent>.md` 读取 YAML frontmatter 元数据（tools、model），从 `.agents/agents/<agent>.body.md` 读取共享指令体，组装后注入 Agent prompt。使用 `run_in_background: true` 确保独立进程执行，仅 APPLY 阶段额外使用 `isolation: "worktree"`。
 
 ## 核心原则
 
@@ -53,18 +53,44 @@ priority: high
 
 ## Claude Code 平台调度机制
 
-Claude Code 使用 **Agent 工具** 派生子 Agent。子 Agent 在 `.claude/agents/` 目录中以 YAML frontmatter 注册（name、description、tools、model），Agent 指令体在 frontmatter 之后。Claude Code 原生 Agent 系统自动读取注册文件，将子 Agent 作为独立 CLI 子进程执行。
+Claude Code 使用 **Agent 工具** 派生子 Agent。子 Agent 元数据（name、tools、model）定义在 `.claude/agents/<agent>.md` 的 YAML frontmatter 中，指令体定义在共享 `.agents/agents/<agent>.body.md` 中。编排器调度时从两边读取并组装。
 
-### Agent 调度语法
+### 调度模式
+
+1. 读取 `.claude/agents/<agent>.md` → 解析 YAML frontmatter 获取 tools、model 元数据
+2. 读取 `.agents/agents/<agent>.body.md` → 获取完整指令体
+3. 组装 prompt：指令体 + 任务上下文
+4. 调用 Agent 工具
+
+### 隔离策略
+
+| 参数 | 使用范围 | 说明 |
+|------|---------|------|
+| `run_in_background: true` | 所有 Agent | 独立上下文窗口，不污染编排器上下文 |
+| `isolation: "worktree"` | **仅 apply-agent** | 代码编写需要独立 worktree，其它 Agent 均为只读或仅写 session 目录 |
+
+### Agent 调度语法（通用）
 
 ```json
 Agent({
   subagent_type: "general-purpose",
-  model: "<opus|sonnet|haiku>",
+  model: "<从 .claude/agents/ frontmatter 读取>",
   description: "<当前阶段简短描述>",
+  run_in_background: true,
+  prompt: "## Agent 指令\n\n<.agents/agents/<agent>.body.md 完整内容>\n\n---\n\n## 当前任务上下文\n\n- Change Name: <change-name>\n- 项目看板: openspec/changes/<change-name>/session/project-board.yaml\n- 前一阶段产出: <artifacts>\n\n## 执行要求\n执行上述 Agent 指令中的所有步骤，产出对应文档。"
+})
+```
+
+### Agent 调度语法（APPLY 阶段专用，含 worktree 隔离）
+
+```json
+Agent({
+  subagent_type: "general-purpose",
+  model: "opus",
+  description: "代码实现: <change-name>",
   isolation: "worktree",
   run_in_background: true,
-  prompt: "## 当前任务上下文\n\n- Change Name: <change-name>\n- 项目看板: openspec/changes/<change-name>/session/project-board.yaml\n- 前一阶段产出: <artifacts>\n\n## 执行要求\n执行你在 .claude/agents/ 中注册的 Agent 定义中的所有步骤，产出对应文档。"
+  prompt: "## Agent 指令\n\n<.agents/agents/apply-agent.body.md 完整内容>\n\n---\n\n## 当前任务上下文\n\n..."
 })
 ```
 
@@ -103,18 +129,19 @@ Agent({
 对每个状态执行：
 
 1. **查 `.agents/workflow/state-machine.yaml`** 获取该状态的 `agent_body_map`
-2. **确定模型**：根据模型映射表选择 Claude Code 模型
-3. **组装上下文 prompt**：只包含 change-name + 前一阶段产出路径（Agent 指令已通过 `.claude/agents/` 注册文件提供）
-4. **调用子 Agent**：使用 `Agent` 工具：
+2. **读取元数据**：读取 `.claude/agents/<agent>.md` 的 YAML frontmatter，获取 tools、model
+3. **读取共享指令体**：读取 `.agents/agents/<agent>.body.md` 完整内容
+4. **组装 prompt**：指令体 + 任务上下文（change-name + 前一阶段产出路径）
+5. **调用子 Agent**：使用 `Agent` 工具（仅 APPLY 阶段添加 `isolation: "worktree"`）：
 
 ```json
 Agent({
   subagent_type: "general-purpose",
-  model: "<按映射表选择>",
+  model: "<从 frontmatter 读取>",
   description: "<阶段>: <change-name>",
-  isolation: "worktree",
   run_in_background: true,
-  prompt: "## 当前任务上下文\n\n- Change Name: <change-name>\n- 项目看板: openspec/changes/<change-name>/session/project-board.yaml\n- 前一阶段产出: <artifacts>\n\n## 执行要求\n执行你在 .claude/agents/ 中注册的 Agent 定义中的所有步骤，产出对应文档。"
+  // isolation: "worktree" — 仅 APPLY 阶段使用，其它阶段不需要
+  prompt: "## Agent 指令\n\n<.agents/agents/<agent>.body.md 完整内容>\n\n---\n\n## 当前任务上下文\n\n- Change Name: <change-name>\n- 项目看板: openspec/changes/<change-name>/session/project-board.yaml\n- 前一阶段产出: <artifacts>\n\n## 执行要求\n执行上述 Agent 指令中的所有步骤，产出对应文档。"
 })
 ```
 
@@ -129,7 +156,8 @@ Agent({
 ### Step N+1: 完成
 
 1. 汇总所有阶段产出
-2. 输出最终交付报告（格式见 `.agents/skills/orchestrator-main/SKILL.md`）
+2. **清理残留 worktree**：执行 `git worktree list` 列出所有 worktree，对 `.claude/worktrees/agent-*` 路径执行 `git worktree remove --force --force`，然后 `git worktree prune --expire=now`
+3. 输出最终交付报告（格式见 `.agents/skills/orchestrator-main/SKILL.md`）
 
 ## 用户命令入口
 

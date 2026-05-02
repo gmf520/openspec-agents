@@ -30,7 +30,9 @@
       "Bash(prettier *)",
       "PowerShell(*)",
       "WebSearch",
-      "WebFetch"
+      "WebFetch",
+      "Bash(git worktree *)",
+      "Bash(git add *)"
     ]
   }
 }

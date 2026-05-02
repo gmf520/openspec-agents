@@ -175,6 +175,9 @@ states:
       - step: 3
         actor: MainOrchestrator（亲自执行）
         action: 用户确认后，执行 specs 同步 + 归档操作 + 更新 project-board.yaml（使用归档后新路径）
+      - step: 4
+        actor: MainOrchestrator（亲自执行）
+        action: 清理 .claude/worktrees/ 下 APPLY 阶段产生的残留 worktree（git worktree remove --force --force + git worktree prune --expire=now）
     agent_body: .agents/agents/archive-agent.body.md
     artifacts:
       - openspec/changes/archive/<change-name>/

@@ -69,17 +69,25 @@ EXPLORE → CREATE → GATE_REVIEW → APPLY → CODE_REVIEW → TEST → VERIFY
 
 ## 调度子 Agent 的方法（CREATE 起使用）
 
-从 CREATE 阶段开始，使用平台调度工具调用子 Agent。每个 Agent 的完整指令体由平台注册文件提供（Claude Code: `.claude/agents/<agent>.md`，Cursor: `.agents/agents/<agent>.body.md`）。
+从 CREATE 阶段开始，使用平台调度工具调用子 Agent。每个 Agent 的完整指令体定义在共享 `.agents/agents/<agent>.body.md`，平台元数据（tools、model）定义在平台注册文件中（Claude Code: `.claude/agents/<agent>.md`，Cursor: `.cursor/agents/<agent>.md`）。
 
 ### 调度流程
 
-1. **确定当前阶段对应的 Agent**：从 `.agents/workflow/state-machine.yaml` 的 `agent_body_map` 获取对应的 Agent 注册文件路径
-2. **组装上下文 prompt**：将阶段上下文（change-name + 前一阶段产出路径）组合（Agent 指令由平台注册文件提供，编排器不再手动注入 body）
-3. **调度子 Agent**：调用平台调度工具（具体方式见平台适配层）
+1. **确定当前阶段对应的 Agent**：从 `.agents/workflow/state-machine.yaml` 的 `agent_body_map` 获取对应的 body 文件路径
+2. **读取平台元数据**：读取平台注册文件的 YAML frontmatter，获取 tools、model
+3. **读取共享指令体**：读取 `.agents/agents/<agent>.body.md` 完整内容
+4. **组装 prompt**：将 Agent body + 阶段上下文（change-name + 前一阶段产出路径）组合
+5. **调度子 Agent**：调用平台调度工具（具体方式见平台适配层）
 
-### 调度 prompt 模板（Claude Code 平台）
+### 调度 prompt 模板
 
 ```
+## Agent 指令
+
+<完整的 .agents/agents/<agent>.body.md 内容>
+
+---
+
 ## 当前任务上下文
 
 - Change Name: <change-name>
@@ -88,10 +96,10 @@ EXPLORE → CREATE → GATE_REVIEW → APPLY → CODE_REVIEW → TEST → VERIFY
 
 ## 执行要求
 
-执行你在平台注册文件中定义的 Agent 指令中的所有步骤，产出对应文档。
+执行上述 Agent 指令中的所有步骤，产出对应文档。
 ```
 
-> **注意**：Agent 指令不再内联注入到 prompt 中。Claude Code 平台通过 `.claude/agents/` 注册文件的 YAML frontmatter + body 提供完整指令，Cursor 平台通过编排器注入 `.agents/agents/<agent>.body.md`。编排器 prompt 仅包含任务上下文。
+> **单一真相源**：指令体只在 `.agents/agents/<agent>.body.md` 中维护。`.claude/agents/<agent>.md` 和 `.cursor/agents/<agent>.md` 只包含平台元数据（YAML frontmatter），通过引用注释指向共享 body 文件。
 
 ### Agent body 文件速查表
 
@@ -357,7 +365,29 @@ if retry_count[state] >= 3:
 
 ## 最终交付报告
 
-工作流完成后输出：
+工作流完成后，先清理残留 worktree，再输出报告：
+
+**Step 1: 清理 worktree**
+
+```bash
+# 列出所有 worktree
+git worktree list
+
+# 强制删除 .claude/worktrees/ 下的所有残留 worktree
+git worktree remove --force --force .claude/worktrees/agent-* 2>/dev/null
+
+# 清理已失效的 worktree 元数据
+git worktree prune --expire=now
+```
+
+**Step 2: 确认清理结果**
+
+```bash
+git worktree list
+# 应只剩主工作区: D:/Temp/openspec-agents <hash> [main]
+```
+
+**Step 3: 输出交付报告**
 
 ```
 ## 交付报告: <change-name>
