@@ -30,9 +30,9 @@ globs: ""
 完整状态机定义在 `.agents/workflow/state-machine.yaml`。核心流程：
 
 ```
-[EXPLORE] → [CREATE] → [GATE_REVIEW] → [APPLY] → [CODE_REVIEW] → [TEST] → [VERIFY] → [SYNC] → [ARCHIVE] → COMPLETE
-     ↑           ↑                         ↑           ↑               ↑         ↑         ↑
-  回退需求    回退方案                  回退开发     回退开发        回退开发   回退开发  回退开发
+[EXPLORE] → [CREATE] → [GATE_REVIEW] → [APPLY] → [CODE_REVIEW] → [TEST] → [VERIFY] → [ARCHIVE] → COMPLETE
+     ↑           ↑                         ↑           ↑               ↑         ↑
+  回退需求    回退方案                  回退开发     回退开发        回退开发   回退开发
 ```
 
 **状态跃迁规则** 参见 `.agents/workflow/state-machine.yaml` 中每个状态的 `transitions` 定义。
@@ -50,7 +50,6 @@ globs: ""
 | CODE_REVIEW | Task 子 Agent | `.agents/agents/code-review-agent.body.md` | `.cursor/agents/code-review-agent.md` |
 | TEST | Task 子 Agent | `.agents/agents/test-agent.body.md` | `.cursor/agents/test-agent.md` |
 | VERIFY | Task 子 Agent | `.agents/agents/verify-agent.body.md` | `.cursor/agents/verify-agent.md` |
-| SYNC | Task 子 Agent | `.agents/agents/sync-agent.body.md` | `.cursor/agents/sync-agent.md` |
 | ARCHIVE | Task 子 Agent + MO | `.agents/agents/archive-agent.body.md` | `.cursor/agents/archive-agent.md` |
 
 ## 调度流程

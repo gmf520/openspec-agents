@@ -51,13 +51,12 @@ Agent({
 | CODE_REVIEW | `.claude/agents/code-review-agent.md` | `opus` |
 | TEST | `.claude/agents/test-agent.md` | `haiku` |
 | VERIFY | `.claude/agents/verify-agent.md` | `opus` |
-| SYNC | `.claude/agents/sync-agent.md` | `sonnet` |
 | ARCHIVE | `.claude/agents/archive-agent.md` | `sonnet` |
 
 ### 模型策略说明
 
 - **opus**：代码生成、代码审查、最终验证——需要最强推理能力
-- **sonnet**：文档生成、审查分析、同步归档——平衡性能与成本
+- **sonnet**：文档生成、审查分析、归档——平衡性能与成本
 - **haiku**：测试运行——轻量快速
 
 ### 脚本路径

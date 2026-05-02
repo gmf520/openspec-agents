@@ -157,7 +157,7 @@ MainOrchestrator 是工作流的**唯一调度者**，不是**执行者**（EXPL
 ## 工作流全貌
 
 ```
-EXPLORE → CREATE → GATE_REVIEW → APPLY → CODE_REVIEW → TEST → VERIFY → SYNC → ARCHIVE → COMPLETE
+EXPLORE → CREATE → GATE_REVIEW → APPLY → CODE_REVIEW → TEST → VERIFY → ARCHIVE → COMPLETE
 ```
 
 | 阶段 | Agent | 调度方式 | 模型 | 产出 |
@@ -169,7 +169,6 @@ EXPLORE → CREATE → GATE_REVIEW → APPLY → CODE_REVIEW → TEST → VERIFY
 | CODE_REVIEW | Code Review Agent | Agent 子 Agent | opus | 代码评审 |
 | TEST | Test Agent | Agent 子 Agent | haiku | 测试报告 |
 | VERIFY | Verify Agent | Agent 子 Agent | opus | 验证报告 |
-| SYNC | Sync Agent | Agent 子 Agent | sonnet | 规格同步 |
 | ARCHIVE | Archive Agent + MO | 混合调度 | sonnet | 归档 + 交付总结 |
 
 ## 相关命令

@@ -54,7 +54,6 @@ Task:
 | CODE_REVIEW | `code-review-agent` | `../../.agents/agents/code-review-agent.body.md` | `.cursor/agents/code-review-agent.md` |
 | TEST | `test-agent` | `../../.agents/agents/test-agent.body.md` | `.cursor/agents/test-agent.md` |
 | VERIFY | `verify-agent` | `../../.agents/agents/verify-agent.body.md` | `.cursor/agents/verify-agent.md` |
-| SYNC | `sync-agent` | `../../.agents/agents/sync-agent.body.md` | `.cursor/agents/sync-agent.md` |
 | ARCHIVE | `archive-agent` | `../../.agents/agents/archive-agent.body.md` | `.cursor/agents/archive-agent.md` |
 
 ### Cursor 模型分配策略

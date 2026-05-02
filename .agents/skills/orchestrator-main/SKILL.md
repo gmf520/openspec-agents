@@ -51,7 +51,7 @@ metadata:
 [ ] 这个操作涉及运行测试？                       → 必须交给 Test Agent
 [ ] 这个操作涉及审查代码质量？                   → 必须交给 Code Review Agent
 [ ] 这个操作涉及生成/修改规划制品？               → 必须交给 Create Agent
-[ ] 这个操作涉及修改 spec 文件？                  → ARCHIVE 阶段由 MainOrchestrator 执行，其余阶段交给 Sync Agent
+[ ] 这个操作涉及修改 spec 文件？                  → ARCHIVE 阶段由 MainOrchestrator 统一执行 sync + archive
 
 以上任一为「是」→ 立即停止，调度对应的子 Agent
 全部为「否」→ 这是调度决策类操作，可以亲自执行
@@ -64,7 +64,7 @@ metadata:
 完整状态机定义参考 `.agents/workflow/state-machine.yaml`。核心流程：
 
 ```
-EXPLORE → CREATE → GATE_REVIEW → APPLY → CODE_REVIEW → TEST → VERIFY → SYNC → ARCHIVE → COMPLETE
+EXPLORE → CREATE → GATE_REVIEW → APPLY → CODE_REVIEW → TEST → VERIFY → ARCHIVE → COMPLETE
 ```
 
 ## 调度子 Agent 的方法（CREATE 起使用）
@@ -111,7 +111,6 @@ EXPLORE → CREATE → GATE_REVIEW → APPLY → CODE_REVIEW → TEST → VERIFY
 | CODE_REVIEW | `.agents/agents/code-review-agent.body.md` |
 | TEST | `.agents/agents/test-agent.body.md` |
 | VERIFY | `.agents/agents/verify-agent.body.md` |
-| SYNC | `.agents/agents/sync-agent.body.md` |
 | ARCHIVE | `.agents/agents/archive-agent.body.md` |
 
 > 参照 `.agents/workflow/state-machine.yaml` 中 `agent_body_map` 字段确定当前阶段使用的 body 文件。
@@ -154,12 +153,6 @@ Body 文件: .agents/agents/test-agent.body.md
 ```
 Body 文件: .agents/agents/verify-agent.body.md
 上下文: 全部制品（proposal + design + tasks + specs/ + DEV-04 + CR-05 + TEST-06）
-```
-
-**SYNC 阶段：**
-```
-Body 文件: .agents/agents/sync-agent.body.md
-上下文: 当前 delta specs
 ```
 
 **ARCHIVE 阶段：**
@@ -278,7 +271,7 @@ Body 文件: .agents/agents/archive-agent.body.md
   - 有 FAIL → retry_count += 1, 回退 APPLY（将失败项转为修复 tasks）
 ```
 
-### 7. VERIFY → SYNC → ARCHIVE
+### 7. VERIFY → ARCHIVE
 
 ```
 状态: VERIFY
@@ -288,27 +281,32 @@ Body 文件: .agents/agents/archive-agent.body.md
   - 验证结果: 0 FAIL
 
 决策:
-  - 0 FAIL → 推进至 SYNC → ARCHIVE
+  - 0 FAIL → 推进至 ARCHIVE
   - 有 FAIL → retry_count += 1, 回退 APPLY（将失败项转为修复 tasks）
 ```
 
-### 8. ARCHIVE → COMPLETE（MainOrchestrator 执行同步+归档）
+### 8. ARCHIVE → COMPLETE（Archive Agent 生成总结 → 用户确认 → MO 执行 sync + archive + worktree 清理）
 
 ```
 状态: ARCHIVE
-执行方式: Archive Agent 生成交付总结 → 用户确认 → MainOrchestrator 执行同步+归档
+执行方式: Archive Agent 生成交付总结 → 展示给用户 → 等待确认 → MO 统一执行
 
 流程:
   1. Archive Agent（调度子 Agent）: 归档前检查 + 生成 DELIVERY_SUMMARY.md
   2. MainOrchestrator: 展示交付总结 → 等待用户确认
-  3. MainOrchestrator（亲自执行）: 读取 delta specs → 同步到 main specs + 归档操作 + 更新 project-board.yaml（使用归档后新路径）
+  3. MainOrchestrator（用户确认后亲自执行）:
+     a. delta specs 同步到主规格库（openspec sync）
+     b. openspec archive 归档变更到 openspec/changes/archive/<change-name>/
+     c. 更新 project-board.yaml，状态改为 COMPLETE，路径使用归档后新路径
+     d. 清理 .claude/worktrees/ 残留 worktree
 
 检查条件:
   - openspec/changes/archive/<change-name>/ 存在且内容完整
   - openspec/specs/ 已与 delta specs 同步
+  - project-board.yaml 状态为 COMPLETE，路径指向归档目录
 
 决策:
-  - 用户确认且同步+归档成功 → 工作流完成，输出交付报告
+  - 用户确认且 sync + archive + worktree 清理全部成功 → COMPLETE，输出交付报告
 ```
 
 ## 回退与重试策略
@@ -407,8 +405,7 @@ git worktree list
 | CODE_REVIEW | CR-05                   | ✅ PASS |
 | TEST        | TEST-06                 | ✅      |
 | VERIFY      | VERIFY-07               | ✅      |
-| SYNC        | specs 同步              | ✅      |
-| ARCHIVE     | specs 同步 + 归档       | ✅      |
+| ARCHIVE     | sync + archive + cleanup | ✅      |
 
 ### 审计信息
 

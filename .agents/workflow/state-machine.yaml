@@ -21,7 +21,7 @@ orchestrator_constraints:
     - 编写或修改任何代码文件（.ts, .vue, .js, .css, .html 等）
     - 编写或修改任何规划制品（proposal.md, design.md, tasks.md）
     - 编写或修改任何会话制品（REQ-01, DES-02, GATE-03, DEV-04, CR-05, TEST-06, VERIFY-07）
-    - 执行编译、测试、验证等操作命令（ARCHIVE 阶段用户确认后由 MainOrchestrator 执行 specs 同步和归档操作）
+    - 执行编译、测试、验证等操作命令（ARCHIVE 阶段用户确认后由 MainOrchestrator 执行 sync + archive + worktree 清理）
     - 直接"代劳"任何子 Agent 的工作
     - 对子 Agent 的产出进行"润色"或"补充修改"
   red_lines:
@@ -162,7 +162,7 @@ states:
     orchestrator_note: "MainOrchestrator 仅调度 Verify Agent，验证工作由子 Agent 独立完成"
 
   - name: ARCHIVE
-    description: 变更归档（两阶段：子 Agent 生成总结 → 用户确认 → MainOrchestrator 执行同步和归档）
+    description: 变更归档（Archive Agent 生成总结 → 用户确认 → MainOrchestrator 执行 specs 同步 + 归档 + worktree 清理 + 看板更新）
     executor: Archive Agent + MainOrchestrator
     scheduling: hybrid
     workflow:
@@ -173,11 +173,12 @@ states:
         actor: MainOrchestrator
         action: 展示交付总结 → 等待用户确认
       - step: 3
-        actor: MainOrchestrator（亲自执行）
-        action: 用户确认后，执行 specs 同步 + 归档操作 + 更新 project-board.yaml（使用归档后新路径）
-      - step: 4
-        actor: MainOrchestrator（亲自执行）
-        action: 清理 .claude/worktrees/ 下 APPLY 阶段产生的残留 worktree（git worktree remove --force --force + git worktree prune --expire=now）
+        actor: MainOrchestrator（亲自执行，用户确认后）
+        action: |
+          1. delta specs 同步到主规格库（openspec sync）
+          2. openspec archive 归档变更
+          3. 更新 project-board.yaml，指向归档后路径 openspec/changes/archive/<change-name>/
+          4. 清理 .claude/worktrees/ 残留 worktree
     agent_body: .agents/agents/archive-agent.body.md
     artifacts:
       - openspec/changes/archive/<change-name>/
@@ -238,5 +239,4 @@ agent_body_map:
   CODE_REVIEW: .agents/agents/code-review-agent.body.md
   TEST: .agents/agents/test-agent.body.md
   VERIFY: .agents/agents/verify-agent.body.md
-  SYNC: .agents/agents/sync-agent.body.md
   ARCHIVE: .agents/agents/archive-agent.body.md

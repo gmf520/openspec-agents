@@ -28,9 +28,9 @@ priority: high
 完整状态机定义在 `.agents/workflow/state-machine.yaml`。核心流程：
 
 ```
-[EXPLORE] → [CREATE] → [GATE_REVIEW] → [APPLY] → [CODE_REVIEW] → [TEST] → [VERIFY] → [SYNC] → [ARCHIVE] → COMPLETE
-     ↑           ↑                         ↑           ↑               ↑         ↑         ↑
-  回退需求    回退方案                  回退开发     回退开发        回退开发   回退开发  回退开发
+[EXPLORE] → [CREATE] → [GATE_REVIEW] → [APPLY] → [CODE_REVIEW] → [TEST] → [VERIFY] → [ARCHIVE] → COMPLETE
+     ↑           ↑                         ↑           ↑               ↑         ↑
+  回退需求    回退方案                  回退开发     回退开发        回退开发   回退开发
 ```
 
 **状态跃迁规则** 参见 `.agents/workflow/state-machine.yaml`。
@@ -48,7 +48,6 @@ priority: high
 | CODE_REVIEW | Agent 子 Agent | `.claude/agents/code-review-agent.md` | opus |
 | TEST | Agent 子 Agent | `.claude/agents/test-agent.md` | haiku |
 | VERIFY | Agent 子 Agent | `.claude/agents/verify-agent.md` | opus |
-| SYNC | Agent 子 Agent | `.claude/agents/sync-agent.md` | sonnet |
 | ARCHIVE | Agent 子 Agent + MO | `.claude/agents/archive-agent.md` | sonnet |
 
 ## Claude Code 平台调度机制
@@ -104,7 +103,6 @@ Agent({
 | Verify Agent | `opus` | 最终验证需要高准确性 |
 | Create Agent | `sonnet` | 文档生成，平衡性能与成本 |
 | Gate Review Agent | `sonnet` | 审查分析，平衡性能与成本 |
-| Sync Agent | `sonnet` | 同步操作无需最强模型 |
 | Archive Agent | `sonnet` | 归档检查无需最强模型 |
 
 ## 调度流程
