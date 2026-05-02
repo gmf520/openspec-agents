@@ -32,7 +32,8 @@
       "WebSearch",
       "WebFetch",
       "Bash(git worktree *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   }
 }
