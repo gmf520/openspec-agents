@@ -82,10 +82,14 @@ Agent({
 
 ### Step 0: 初始化
 
-1. 获取 change-name（用户指定或从需求推断）
-2. 查询项目看板：`openspec list --json`
-3. 确定变更边界（涉及哪些模块）
-4. 初始化阶段重试计数器 `retry_count = {}`
+1. **智能输入检测**（由命令文件 `opsx/workflow.md` 定义）：
+   - 自动识别输入是变更名、需求描述、还是二者混合
+   - 变更名格式: kebab-case（`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`）
+   - 若仅输入需求描述，自动推导 kebab-case 变更名
+2. 获取 change-name（用户指定或从需求推断）
+3. 查询项目看板：`openspec list --json`
+4. 确定变更边界（涉及哪些模块）
+5. 初始化阶段重试计数器 `retry_count = {}`
 
 ### Step 1: EXPLORE 阶段（主 Agent 直接执行）
 
@@ -126,7 +130,7 @@ Agent({
 
 | 命令                           | 功能               |
 | ------------------------------ | ------------------ |
-| `/opsx:workflow <change-name>` | 启动完整工作流     |
+| `/opsx:workflow [变更名|需求描述]` | 启动完整工作流（智能识别输入） |
 | `/opsx:workflow-status`        | 查看当前工作流状态 |
 | `/opsx:workflow-resume`        | 从中断点恢复工作流 |
 

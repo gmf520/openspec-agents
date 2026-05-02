@@ -31,5 +31,5 @@ description: "查看多智能体工作流的当前状态和进度"
 
  当前没有活跃的开发工作流。
 
- 使用 `/opsx:workflow <change-name>` 启动一个新工作流。
+ 使用 `/opsx:workflow [变更名|需求描述]` 启动一个新工作流。
 ```

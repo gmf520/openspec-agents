@@ -10,7 +10,7 @@ context: |
   - 通信协议: OpenSpec 文档格式
   
   ## 入口命令
-  - /opsx:workflow <change-name> - 启动完整工作流
+  - /opsx:workflow [变更名|需求描述] - 启动完整工作流（智能识别输入）
   - /opsx:workflow-status - 查看状态
   - /opsx:workflow-resume - 恢复工作流
 

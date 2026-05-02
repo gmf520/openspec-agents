@@ -272,13 +272,15 @@ openspec-agents/
 在 Cursor 中输入：
 
 ```
-/opsx:workflow <change-name>
+/opsx:workflow [变更名 | 需求描述 | 变更名 + 需求描述]
 ```
 
-例如：
+系统会自动识别输入类型，无需手动区分。例如：
 
 ```
-/opsx:workflow add-dark-mode
+/opsx:workflow add-dark-mode                       # 仅变更名
+/opsx:workflow 添加暗色模式                          # 仅需求描述，自动推导变更名
+/opsx:workflow add-dark-mode 支持自动切换深色主题     # 变更名 + 需求描述
 ```
 
 MainOrchestrator 将自动接管，依次执行：

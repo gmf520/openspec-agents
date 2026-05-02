@@ -18,33 +18,80 @@ parameters:
 
 启动多智能体开发工作流。
 
-**输入**: `/opsx:workflow <change-name> [需求描述或需求文档路径]`
+**输入**: `/opsx:workflow [变更名 | 需求描述 | 变更名 + 需求描述]`
+
+**智能检测**: 系统自动识别输入类型（变更名 / 需求描述 / 二者混合），无需手动区分。
 
 **示例**:
 
-- `/opsx:workflow add-dark-mode`
-- `/opsx:workflow add-auth-system @需求文档.md`
-- `/opsx:workflow fix-login-bug`
+- `/opsx:workflow add-dark-mode` → 变更名: `add-dark-mode`
+- `/opsx:workflow 添加暗色模式` → 自动推导变更名: `add-dark-mode`，需求: `添加暗色模式`
+- `/opsx:workflow add-dark-mode 支持自动切换深色主题` → 变更名: `add-dark-mode`，需求: `支持自动切换深色主题`
+- `/opsx:workflow fix-login-bug @需求文档.md` → 变更名: `fix-login-bug`，需求: `@需求文档.md`
 
 ## 工作流启动流程
 
 收到命令后，MainOrchestrator（你）执行以下步骤：
 
+### 0. 智能输入检测
+
+收到用户输入后，首先进行智能识别，判断输入是变更名、需求描述、还是二者皆有。
+
+**变更名格式**: kebab-case（全小写英文 + 连字符），匹配 `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`，如 `add-dark-mode`、`fix-login-bug`
+
+**检测算法**:
+
+```
+INPUT = 提取 /opsx:workflow 之后的所有文本，去除首尾空白
+
+IF INPUT 为空:
+    → 使用 AskUserQuestion 询问: "请输入变更名称或需求描述"
+    → 将用户回复作为新的 INPUT 重新执行检测
+
+TOKENS = INPUT 按空白字符分割
+FIRST = TOKENS[0]
+REST = TOKENS[1:] 用空格连接
+
+IF FIRST 匹配 kebab-case 格式:
+    IF REST 非空:
+        → change-name = FIRST, requirement = REST  (场景: 变更名 + 需求描述)
+    ELSE IF FIRST 不含连字符 AND FIRST 长度 < 6:
+        → 整体作为需求描述，自动推导 change-name  (场景: 短英文词如 "add" 视为需求)
+    ELSE:
+        → change-name = FIRST  (场景: 仅变更名)
+ELSE:
+    → 整体作为需求描述，从描述中推导 kebab-case 变更名  (场景: 仅需求描述)
+```
+
+**变更名推导规则**（从需求描述推导时）:
+- 提取关键英文词汇，用连字符连接
+- 中文需求 → 翻译核心动作为英文: "添加"→"add", "修复"→"fix", "更新"→"update", "删除"→"remove", "重构"→"refactor", "实现"→"implement", "优化"→"optimize"
+- 英文需求 → 将空格替换为连字符，转小写
+- 确保结果符合 kebab-case 格式
+- 示例: `添加暗色模式` → `add-dark-mode`
+- 示例: `Fix login bug` → `fix-login-bug`
+- 示例: `add dark mode support` → `add-dark-mode-support`
+
 ### 1. 初始化
 
 ```
-- 解析 change-name 和需求描述
+- 输出检测结果，让用户确认:
+  "智能识别: change-name = <name>, requirement = <requirement>"
 - 运行 openspec list --json 检查是否已存在同名变更
 - 如已存在同名变更:
-    → 询问用户是恢复还是新建
+    → 读取 openspec/changes/<change-name>/session/project-board.yaml
+    → 获取当前状态和已有制品
+    → 向用户输出:
+      "变更 <change-name> 已存在，当前状态: <status>，自动恢复..."
+    → 跳转到 Step 3 恢复执行（等同于 workflow-resume）
 - 如不存在:
     → 创建变更上下文
 ```
 
-### 2. 更新项目看板
+### 2. 更新项目看板（新建时）
 
 ```yaml
-# 在 openspec/changes/<change-name>/session/project-board.yaml 中创建新条目
+# 仅在新建变更时执行，在 openspec/changes/<change-name>/session/project-board.yaml 中创建新条目
 active_changes:
   - name: <change-name>
     status: EXPLORE
