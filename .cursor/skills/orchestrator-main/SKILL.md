@@ -38,7 +38,7 @@ metadata:
 [ ] 这个操作涉及运行测试？                       → 必须交给 Test Agent
 [ ] 这个操作涉及审查代码质量？                   → 必须交给 Code Review Agent
 [ ] 这个操作涉及生成/修改规划制品？               → 必须交给 Create Agent
-[ ] 这个操作涉及修改 spec 文件？                  → 必须交给 Sync Agent
+[ ] 这个操作涉及修改 spec 文件？                  → ARCHIVE 阶段由 MainOrchestrator 执行，其余阶段交给 Sync Agent
 
 以上任一为「是」→ 立即停止，使用 Task 工具调度对应的子 Agent
 全部为「否」→ 这是调度决策类操作，可以亲自执行
@@ -49,7 +49,7 @@ metadata:
 完整状态机定义参考 `.cursor/workflow/state-machine.yaml`。核心流程：
 
 ```
-EXPLORE → CREATE → GATE_REVIEW → APPLY → CODE_REVIEW → TEST → VERIFY → SYNC → ARCHIVE → COMPLETE
+EXPLORE → CREATE → GATE_REVIEW → APPLY → CODE_REVIEW → TEST → VERIFY → ARCHIVE → COMPLETE
 ```
 
 ## 调度子 Agent 的方法（CREATE 起使用）
@@ -86,8 +86,7 @@ prompt: |
 | CODE_REVIEW | `code-review-agent` | `.cursor/agents/code-review-agent.md` |
 | TEST | `test-agent` | `.cursor/agents/test-agent.md` |
 | VERIFY | `verify-agent` | `.cursor/agents/verify-agent.md` |
-| SYNC | `sync-agent` | `.cursor/agents/sync-agent.md` |
-| ARCHIVE | `archive-agent` | `.cursor/agents/archive-agent.md` |
+| ARCHIVE（Archive Agent 生成总结 → MainOrchestrator 同步+归档） | `archive-agent` | `.cursor/agents/archive-agent.md` |
 
 > 参照 `state-machine.yaml` 中每个状态的 `agent_ref` 字段确定当前阶段使用的 Agent。
 
@@ -141,7 +140,7 @@ prompt: |
   执行你的 Agent 定义中的所有步骤，产出对应文档。
 ```
 
-**其他阶段（VERIFY / SYNC / ARCHIVE）** 同理，更换 `subagent_type` 和上下文文件即可。
+**其他阶段（VERIFY / ARCHIVE）** 同理，更换 `subagent_type` 和上下文文件即可。
 
 ## 阶段推进流程
 
@@ -267,7 +266,7 @@ prompt: |
   - 有 FAIL → retry_count += 1, 回退 APPLY（将失败项转为修复 tasks）
 ```
 
-### 7. VERIFY → SYNC
+### 7. VERIFY → ARCHIVE（用户确认后同步+归档）
 
 > **⚠️ 约束强化：此阶段必须通过 Task 工具调度 Verify Agent，严禁**：
 > - 自行检查 tasks.md 打勾状态
@@ -284,39 +283,28 @@ prompt: |
   - 验证结果: 0 FAIL
 
 决策:
-  - 0 FAIL → 推进至 SYNC
+  - 0 FAIL → 通知用户确认，推进至 ARCHIVE
   - 有 FAIL → retry_count += 1, 回退 APPLY（将失败项转为修复 tasks）
 ```
 
-### 8. SYNC → ARCHIVE
 
-> **⚠️ 约束强化：此阶段必须通过 Task 工具调度 Sync Agent，严禁**：
-> - 自行修改任何 spec 文件
-> - 自行执行 openspec sync 命令
->
-> 你的职责只有：**调度 → 等结果 → 检查同步结果 → 决策推进/回退**
-
-```
-状态: SYNC
-子 Agent: Sync Agent (agent_ref: sync-agent)
-检查条件:
-  - openspec/specs/ 已更新
-
-决策:
-  - 同步成功 → 推进至 ARCHIVE
-  - 同步冲突 → retry_count += 1, 若有自动解决可能则回退 APPLY，否则报用户
-```
-
-### 9. ARCHIVE → COMPLETE
+### 8. ARCHIVE → COMPLETE（MainOrchestrator 执行同步+归档）
 
 ```
 状态: ARCHIVE
-子 Agent: Archive Agent (agent_ref: archive-agent)
+执行方式: Archive Agent 生成交付总结 → 用户确认 → MainOrchestrator 执行同步+归档
+
+流程:
+  1. Archive Agent（通过 Task 调度）: 归档前检查 + 生成 DELIVERY_SUMMARY.md
+  2. MainOrchestrator: 展示交付总结 → 等待用户确认
+  3. MainOrchestrator（亲自执行）: 读取 delta specs → 同步到 main specs + 归档操作 + 更新 project-board.yaml（使用归档后新路径）
+
 检查条件:
   - openspec/changes/archive/<change-name>/ 存在且内容完整
+  - openspec/specs/ 已与 delta specs 同步
 
 决策:
-  - 归档完成 → 工作流完成，输出交付报告
+  - 用户确认且同步+归档成功 → 工作流完成，输出交付报告
 ```
 
 ## 回退与重试策略
@@ -346,6 +334,7 @@ if retry_count[state] >= 3:
   updated_at: <timestamp>
   artifacts:
     <state>: <file-path>
+  archive_path: <archive-new-path>  # ARCHIVE 阶段使用归档后的新路径
 ```
 
 ## 向用户汇报的格式
@@ -393,15 +382,14 @@ if retry_count[state] >= 3:
 | CODE_REVIEW | CR-05                   | ✅ PASS |
 | TEST        | TEST-06                 | ✅      |
 | VERIFY      | VERIFY-07               | ✅      |
-| SYNC        | specs 同步              | ✅      |
-| ARCHIVE     | archive                 | ✅      |
+| ARCHIVE     | specs 同步 + 归档       | ✅      |
 
 ### 审计信息
 
 - 开始时间: ...
 - 完成时间: ...
 - 回退次数: ...
-- Archive 路径: openspec/changes/archive/<change-name>/
+- 归档路径: openspec/changes/archive/<change-name>/
 
 ```
 

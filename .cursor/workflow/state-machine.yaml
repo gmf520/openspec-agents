@@ -18,9 +18,9 @@ orchestrator_constraints:
     - 向用户汇报工作流状态和阶段完成情况
   forbidden:
     - 编写或修改任何代码文件（.ts, .vue, .js, .css, .html 等）
-    - 编写或修改任何规划制品（proposal.md, design.md, tasks.md, specs/）
+    - 编写或修改任何规划制品（proposal.md, design.md, tasks.md）
     - 编写或修改任何会话制品（REQ-01, DES-02, GATE-03, DEV-04, CR-05, TEST-06, VERIFY-07）
-    - 执行编译、测试、验证、同步等操作命令（归档除外：ARCHIVE 阶段用户确认后由 MainOrchestrator 执行归档）
+    - 执行编译、测试、验证等操作命令（ARCHIVE 阶段用户确认后由 MainOrchestrator 执行 specs 同步和归档操作）
     - 直接"代劳"任何子 Agent 的工作
     - 对子 Agent 的产出进行"润色"或"补充修改"
   exception:
@@ -29,9 +29,9 @@ orchestrator_constraints:
       scope: "仅限 REQ-01_requirement_analysis.md 和 DES-02_solution_design.md"
       note: "EXPLORE 完成后，MainOrchestrator 回归纯调度角色"
     - stage: ARCHIVE
-      reason: "归档需用户最终确认，确认后由 MainOrchestrator 执行实际归档操作"
-      scope: "子 Agent 生成交付总结和归档计划 → 用户确认 → MainOrchestrator 执行归档和看板更新"
-      note: "执行归档前必须获得用户的明确确认，不得自动归档"
+      reason: "归档需用户最终确认，确认后由 MainOrchestrator 执行实际同步和归档操作"
+      scope: "子 Agent 生成交付总结和归档计划 → 用户确认 → MainOrchestrator 执行 specs 同步、归档操作和看板更新（使用归档后新路径）"
+      note: "执行同步和归档前必须获得用户的明确确认，不得自动执行"
 
 # ============================================================
 # 状态定义
@@ -153,31 +153,15 @@ states:
     artifacts:
       - VERIFY-07_verification_report.md
     transitions:
-      - target: SYNC
+      - target: ARCHIVE
         condition: zero_fail
       - target: APPLY
         condition: has_fail
     max_retries: 3
     orchestrator_note: "MainOrchestrator 仅调度 Verify Agent，验证工作由子 Agent 独立完成"
 
-  - name: SYNC
-    description: 规格同步
-    executor: Sync Agent（子 Agent，通过 Task 工具调度）
-    scheduling: subagent_via_task
-    agent: Sync Agent
-    agent_ref: sync-agent
-    artifacts:
-      - openspec/specs/
-    transitions:
-      - target: ARCHIVE
-        condition: sync_success
-      - target: APPLY
-        condition: sync_conflict
-    max_retries: 3
-    orchestrator_note: "MainOrchestrator 仅调度 Sync Agent，禁止自行同步或修改 spec 文件"
-
   - name: ARCHIVE
-    description: 变更归档（两阶段：子 Agent 生成总结 → 用户确认 → MainOrchestrator 执行归档）
+    description: 变更归档（两阶段：子 Agent 生成总结 → 用户确认 → MainOrchestrator 执行同步和归档）
     executor: Archive Agent + MainOrchestrator
     scheduling: hybrid
     workflow:
@@ -189,7 +173,7 @@ states:
         action: 展示交付总结 → 等待用户确认
       - step: 3
         actor: MainOrchestrator（亲自执行）
-        action: 用户确认后，执行归档操作 + 更新 project-board.yaml
+        action: 用户确认后，执行 specs 同步 + 归档操作 + 更新 project-board.yaml（使用归档后新路径）
     agent: Archive Agent
     agent_ref: archive-agent
     artifacts:
@@ -199,7 +183,7 @@ states:
       - target: COMPLETE
         condition: user_confirmed_and_archive_success
     max_retries: 3
-    orchestrator_note: "Archive Agent 生成总结 → 用户确认后 → MainOrchestrator 亲自执行归档"
+    orchestrator_note: "Archive Agent 生成总结 → 用户确认后 → MainOrchestrator 亲自执行 specs 同步与变更归档"
 
   - name: COMPLETE
     description: 工作流完成（终端状态，无子 Agent）
@@ -230,6 +214,4 @@ error_handling:
   test_blocking_defect:
     action: rollback_to_apply
   verify_fail:
-    action: rollback_to_apply
-  sync_conflict:
     action: rollback_to_apply
