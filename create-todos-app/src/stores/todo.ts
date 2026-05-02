@@ -25,6 +25,7 @@ export const useTodoStore = defineStore('todo', () => {
     isOverdue: null,
   })
   const editingCardId = ref<string | null>(null)
+  const viewMode = ref<'board' | 'list'>('board')
 
   const allTags = computed(() => tags.value)
 
@@ -42,6 +43,7 @@ export const useTodoStore = defineStore('todo', () => {
       columns.value = saved.columns
       cards.value = saved.cards
       tags.value = saved.tags
+      viewMode.value = saved.viewMode || 'board'
     } else {
       columns.value = DEFAULT_COLUMNS.map((col) => ({ ...col }))
       tags.value = PRESET_TAGS.map((tag) => ({ ...tag }))
@@ -53,6 +55,7 @@ export const useTodoStore = defineStore('todo', () => {
       columns: columns.value,
       cards: cards.value,
       tags: tags.value,
+      viewMode: viewMode.value,
     })
   }
 
@@ -201,6 +204,11 @@ export const useTodoStore = defineStore('todo', () => {
     editingCardId.value = null
   }
 
+  function setViewMode(mode: 'board' | 'list'): void {
+    viewMode.value = mode
+    persist()
+  }
+
   function setSearchQuery(query: string): void {
     searchQuery.value = query
   }
@@ -242,6 +250,7 @@ export const useTodoStore = defineStore('todo', () => {
     searchQuery,
     filters,
     editingCardId,
+    viewMode,
     allTags,
     getCardsByColumn,
     loadFromStorage,
@@ -256,6 +265,7 @@ export const useTodoStore = defineStore('todo', () => {
     addTag,
     openEditModal,
     closeEditModal,
+    setViewMode,
     setSearchQuery,
     setFilter,
     clearFilters,

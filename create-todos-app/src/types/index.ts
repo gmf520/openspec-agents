@@ -58,6 +58,7 @@ export interface AppState {
   columns: Column[]
   cards: TodoCard[]
   tags: Tag[]
+  viewMode?: 'board' | 'list'
 }
 
 export const STORAGE_KEY = 'todos-app-state'

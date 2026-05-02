@@ -5,6 +5,7 @@ import { loadState, exportToJson, importFromJson } from './utils/storage'
 import SearchBar from './components/SearchBar.vue'
 import FilterPanel from './components/FilterPanel.vue'
 import Board from './components/Board.vue'
+import ListView from './components/ListView.vue'
 import CardModal from './components/CardModal.vue'
 
 const store = useTodoStore()
@@ -89,7 +90,7 @@ function cancelImport() {
   showImportConfirm.value = false
 }
 
-const noResults = store.cards.length > 0 && store.columns.every(
+const noResults = store.viewMode === 'board' && store.cards.length > 0 && store.columns.every(
   (col) => store.getCardsByColumn(col.id).length === 0
 )
 </script>
@@ -112,6 +113,20 @@ const noResults = store.cards.length > 0 && store.columns.every(
       <FilterPanel />
 
       <div class="board-toolbar">
+        <div class="view-toggle">
+          <button
+            :class="['btn btn-sm toggle-btn', store.viewMode === 'board' ? 'btn-primary' : 'btn-outline']"
+            @click="store.setViewMode('board')"
+          >
+            📋 看板
+          </button>
+          <button
+            :class="['btn btn-sm toggle-btn', store.viewMode === 'list' ? 'btn-primary' : 'btn-outline']"
+            @click="store.setViewMode('list')"
+          >
+            📄 列表
+          </button>
+        </div>
         <button class="btn btn-primary" @click="handleAddCard">
           + 新建卡片
         </button>
@@ -137,7 +152,8 @@ const noResults = store.cards.length > 0 && store.columns.every(
         <p>未找到匹配的卡片</p>
       </div>
 
-      <Board />
+      <Board v-if="store.viewMode === 'board'" />
+      <ListView v-else />
     </main>
 
     <CardModal
@@ -220,6 +236,12 @@ const noResults = store.cards.length > 0 && store.columns.every(
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 4px;
+  margin-right: auto;
 }
 
 .new-column-form {
