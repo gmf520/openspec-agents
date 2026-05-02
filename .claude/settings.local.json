@@ -1,7 +1,36 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(Get-ChildItem *)"
+      "Agent",
+      "Skill(*)",
+      "Bash(openspec *)",
+      "Bash(git diff *)",
+      "Bash(git status *)",
+      "Bash(git log *)",
+      "Bash(rg *)",
+      "Bash(npx *)",
+      "Bash(npm *)",
+      "Bash(node *)",
+      "Bash(cargo *)",
+      "Bash(go *)",
+      "Bash(python *)",
+      "Bash(gradle *)",
+      "Bash(dotnet *)",
+      "Bash(mvn *)",
+      "Bash(php *)",
+      "Bash(ruby *)",
+      "Bash(swift *)",
+      "Bash(cmake *)",
+      "Bash(flutter *)",
+      "Bash(dart *)",
+      "Bash(mix *)",
+      "Bash(flake8 *)",
+      "Bash(pip *)",
+      "Bash(eslint *)",
+      "Bash(prettier *)",
+      "PowerShell(*)",
+      "WebSearch",
+      "WebFetch"
     ]
   }
 }

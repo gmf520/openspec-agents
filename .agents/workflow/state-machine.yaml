@@ -15,7 +15,7 @@ orchestrator_constraints:
     - 根据状态机转换条件决定路由方向
     - 通过平台工具调度子 Agent（传入 change-name 和上下文）
     - 接收子 Agent 报告，评估转换条件，决定下一阶段
-    - 错误处理：根据 error_handling 策略执行回退
+    - 错误处理：根据 error_handling 策略执行回退（重新调度子 Agent 或中止工作流）
     - 向用户汇报工作流状态和阶段完成情况
   forbidden:
     - 编写或修改任何代码文件（.ts, .vue, .js, .css, .html 等）
@@ -24,6 +24,12 @@ orchestrator_constraints:
     - 执行编译、测试、验证等操作命令（ARCHIVE 阶段用户确认后由 MainOrchestrator 执行 specs 同步和归档操作）
     - 直接"代劳"任何子 Agent 的工作
     - 对子 Agent 的产出进行"润色"或"补充修改"
+  red_lines:
+    - rule: "子 Agent 执行失败 → 只能重新调度子 Agent 或中止工作流汇报用户，严禁亲自代劳"
+      reason: "MainOrchestrator 不是执行者。代劳会绕过质量闸门、产生未经审查的制品、破坏单一真相源"
+      enforcement: "一旦发现 MainOrchestrator 尝试代劳（直接修改文件、运行测试等），立即中止当前操作并向用户报告违规行为"
+    - rule: "子 Agent 产出不完整或有问题 → 重新调度同一子 Agent 修复，不得由 MainOrchestrator 补充修改"
+      reason: "只有子 Agent 了解其产出上下文，MainOrchestrator 的修改无法被后续子 Agent 追踪和验证"
   exception:
     - stage: EXPLORE
       reason: "需要与用户实时交互澄清需求，子 Agent 无法进行对话"
@@ -196,11 +202,21 @@ gate_dimensions:
   - rollback_plan: 回滚/回退方案是否就绪
 
 # 错误处理策略
+# 核心原则：子 Agent 失败 → 重新调度子 Agent 或中止工作流，MainOrchestrator 严禁代劳
 error_handling:
+  subagent_failure_policy:
+    description: "任何子 Agent 执行失败时的唯一处理方式"
+    options:
+      - action: re_dispatch
+        description: "重新调度同一子 Agent（修复问题后重试），保留上下文和失败原因"
+        max_retries_per_stage: 3
+      - action: abort_workflow
+        description: "暂停工作流，向用户汇报失败原因、已尝试次数，等待人工决策"
+    forbidden_action: "MainOrchestrator 亲自代劳（修改文件、运行命令、补充产出）—— 这是红线违规，触发工作流中止"
   compile_failure:
     action: retry
     max_auto_retries: 3
-    on_exhausted: report_to_human
+    on_exhausted: re_dispatch_or_abort
   gate_blocked:
     action: rollback_to_explore
   review_must_fix:

@@ -15,7 +15,7 @@ metadata:
 
 1. 管理状态机
 2. **EXPLORE 阶段亲自执行** - 与用户实时交互澄清需求
-3. **CREATE 起调度子 Agent** - 读取共享 Agent 指令体并注入到调度 prompt
+3. **CREATE 起调度子 Agent** - 通过平台调度工具派生子 Agent（Agent 指令由平台注册文件提供，编排器不再手动注入 body）
 4. 判断阶段推进/回退
 5. 跨会话追踪进度
 
@@ -27,6 +27,19 @@ metadata:
 - **不要自己运行测试** - 测试运行交给 Test Agent
 - **不要跳过闸门** - 任何代码变更前必须通过 Gate Review Agent
 - **你的输出是决策，不是实现**
+
+### 红线：子 Agent 失败时的唯一处理方式
+
+**子 Agent 执行失败、产出不完整、或产出有问题时，MainOrchestrator 只有两个选择：**
+
+| 选项 | 操作 | 适用场景 |
+|------|------|---------|
+| **重新调度** | 将上下文和失败原因传给子 Agent，重新派发执行 | 错误可修复、artifact 可重新生成 |
+| **中止工作流** | 暂停并汇报用户：当前阶段、失败原因、已重试次数 | 连续重试 3 次仍失败、或子 Agent 报告无法修复 |
+
+**严禁：MainOrchestrator 亲自修改文件、补充产出、或"顺手修复"任何子 Agent 的工作。**
+
+这是最高优先级的红线。一旦违反（尝试 Write/Edit 文件、运行测试命令等）：立即停止操作，向用户报告违规，回退到调度角色。
 
 ### 强制执行清单（每次调度前自检）
 
@@ -42,6 +55,8 @@ metadata:
 
 以上任一为「是」→ 立即停止，调度对应的子 Agent
 全部为「否」→ 这是调度决策类操作，可以亲自执行
+
+如果某个子 Agent 已经失败过 → 检查重试次数，决定重新调度还是中止，**绝不代劳**
 ```
 
 ## 状态机模型
@@ -54,24 +69,17 @@ EXPLORE → CREATE → GATE_REVIEW → APPLY → CODE_REVIEW → TEST → VERIFY
 
 ## 调度子 Agent 的方法（CREATE 起使用）
 
-从 CREATE 阶段开始，使用平台调度工具调用子 Agent。每个 Agent 的完整指令体定义在 `agents/<agent>.body.md`。
+从 CREATE 阶段开始，使用平台调度工具调用子 Agent。每个 Agent 的完整指令体由平台注册文件提供（Claude Code: `.claude/agents/<agent>.md`，Cursor: `.agents/agents/<agent>.body.md`）。
 
 ### 调度流程
 
-1. **查找 Agent body 文件**：根据当前阶段，从 `.agents/workflow/state-machine.yaml` 的 `agent_body_map` 获取对应的 body 文件路径
-2. **读取 Agent body**：读取 `agents/<agent>.body.md` 获取完整的子 Agent 指令
-3. **组装 prompt**：将 Agent body + 阶段上下文（change-name + 前一阶段产出路径）组合
-4. **调度子 Agent**：调用平台调度工具（具体方式见平台适配层）
+1. **确定当前阶段对应的 Agent**：从 `.agents/workflow/state-machine.yaml` 的 `agent_body_map` 获取对应的 Agent 注册文件路径
+2. **组装上下文 prompt**：将阶段上下文（change-name + 前一阶段产出路径）组合（Agent 指令由平台注册文件提供，编排器不再手动注入 body）
+3. **调度子 Agent**：调用平台调度工具（具体方式见平台适配层）
 
-### 调度 prompt 模板
+### 调度 prompt 模板（Claude Code 平台）
 
 ```
-## Agent 指令
-
-<完整的 agents/<agent>.body.md 内容>
-
----
-
 ## 当前任务上下文
 
 - Change Name: <change-name>
@@ -80,8 +88,10 @@ EXPLORE → CREATE → GATE_REVIEW → APPLY → CODE_REVIEW → TEST → VERIFY
 
 ## 执行要求
 
-执行上述 Agent 指令中的所有步骤，产出对应文档。
+执行你在平台注册文件中定义的 Agent 指令中的所有步骤，产出对应文档。
 ```
+
+> **注意**：Agent 指令不再内联注入到 prompt 中。Claude Code 平台通过 `.claude/agents/` 注册文件的 YAML frontmatter + body 提供完整指令，Cursor 平台通过编排器注入 `.agents/agents/<agent>.body.md`。编排器 prompt 仅包含任务上下文。
 
 ### Agent body 文件速查表
 

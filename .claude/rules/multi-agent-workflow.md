@@ -11,7 +11,7 @@ priority: high
 **两个执行模式：**
 
 - **EXPLORE 阶段**：由你**自己**进入探索模式，与用户实时交互，逐步澄清需求。**不使用 Agent 工具。**
-- **CREATE 及之后阶段**：通过 Claude Code `Agent` 工具派生独立子 Agent 执行。调度时从共享 `.agents/agents/<agent>.body.md` 读取完整指令体注入 Agent prompt。
+- **CREATE 及之后阶段**：通过 Claude Code `Agent` 工具派生独立子 Agent 执行。子 Agent 在 `.claude/agents/` 中以 YAML frontmatter 注册，Claude Code 原生 Agent 系统自动读取其指令。调度时使用 `isolation: "worktree"` + `run_in_background: true` 确保独立进程执行。
 
 ## 核心原则
 
@@ -21,6 +21,7 @@ priority: high
 - **Gate before code.** 任何代码变更必须先通过闸门审查。
 - **同一阶段连续回退 3 次 → 暂停并向用户汇报，请求人工介入。**
 - **OpenSpec 文档是所有 Agent 间的单一真相源。**
+- **红线：子 Agent 失败时只能重新调度子 Agent 或中止工作流。严禁 MainOrchestrator 亲自代劳（修改文件、补充产出、运行命令）。这是最高优先级安全约束。**
 
 ## 状态机定义
 
@@ -38,21 +39,21 @@ priority: high
 
 每个子 Agent 的核心指令体在共享 `.agents/agents/<agent>.body.md`。
 
-| 状态 | 执行方式 | Body 文件 | Claude Code 模型 |
-|------|---------|-----------|-----------------|
+| 状态 | 执行方式 | 注册文件 | Claude Code 模型 |
+|------|---------|---------|-----------------|
 | EXPLORE | 主 Agent 直接执行 | `.agents/skills/agent-explore/SKILL.md` | - |
-| CREATE | Agent 子 Agent | `.agents/agents/create-agent.body.md` | sonnet |
-| GATE_REVIEW | Agent 子 Agent | `.agents/agents/gate-review-agent.body.md` | sonnet |
-| APPLY | Agent 子 Agent | `.agents/agents/apply-agent.body.md` | opus |
-| CODE_REVIEW | Agent 子 Agent | `.agents/agents/code-review-agent.body.md` | opus |
-| TEST | Agent 子 Agent | `.agents/agents/test-agent.body.md` | haiku |
-| VERIFY | Agent 子 Agent | `.agents/agents/verify-agent.body.md` | opus |
-| SYNC | Agent 子 Agent | `.agents/agents/sync-agent.body.md` | sonnet |
-| ARCHIVE | Agent 子 Agent + MO | `.agents/agents/archive-agent.body.md` | sonnet |
+| CREATE | Agent 子 Agent | `.claude/agents/create-agent.md` | sonnet |
+| GATE_REVIEW | Agent 子 Agent | `.claude/agents/gate-review-agent.md` | sonnet |
+| APPLY | Agent 子 Agent | `.claude/agents/apply-agent.md` | opus |
+| CODE_REVIEW | Agent 子 Agent | `.claude/agents/code-review-agent.md` | opus |
+| TEST | Agent 子 Agent | `.claude/agents/test-agent.md` | haiku |
+| VERIFY | Agent 子 Agent | `.claude/agents/verify-agent.md` | opus |
+| SYNC | Agent 子 Agent | `.claude/agents/sync-agent.md` | sonnet |
+| ARCHIVE | Agent 子 Agent + MO | `.claude/agents/archive-agent.md` | sonnet |
 
 ## Claude Code 平台调度机制
 
-Claude Code 使用 **Agent 工具** 派生子 Agent。与 Cursor 不同，Claude Code 没有独立的 Agent 定义文件——子 Agent 的完整指令直接注入到 `prompt` 参数中。
+Claude Code 使用 **Agent 工具** 派生子 Agent。子 Agent 在 `.claude/agents/` 目录中以 YAML frontmatter 注册（name、description、tools、model），Agent 指令体在 frontmatter 之后。Claude Code 原生 Agent 系统自动读取注册文件，将子 Agent 作为独立 CLI 子进程执行。
 
 ### Agent 调度语法
 
@@ -61,7 +62,9 @@ Agent({
   subagent_type: "general-purpose",
   model: "<opus|sonnet|haiku>",
   description: "<当前阶段简短描述>",
-  prompt: "<从 .agents/agents/<agent>.body.md 读取的完整指令 + 上下文>"
+  isolation: "worktree",
+  run_in_background: true,
+  prompt: "## 当前任务上下文\n\n- Change Name: <change-name>\n- 项目看板: openspec/changes/<change-name>/session/project-board.yaml\n- 前一阶段产出: <artifacts>\n\n## 执行要求\n执行你在 .claude/agents/ 中注册的 Agent 定义中的所有步骤，产出对应文档。"
 })
 ```
 
@@ -100,8 +103,8 @@ Agent({
 对每个状态执行：
 
 1. **查 `.agents/workflow/state-machine.yaml`** 获取该状态的 `agent_body_map`
-2. **读取共享 Agent body**：读取对应的 `.agents/agents/<agent>.body.md` 完整内容
-3. **确定模型**：根据模型映射表选择 Claude Code 模型
+2. **确定模型**：根据模型映射表选择 Claude Code 模型
+3. **组装上下文 prompt**：只包含 change-name + 前一阶段产出路径（Agent 指令已通过 `.claude/agents/` 注册文件提供）
 4. **调用子 Agent**：使用 `Agent` 工具：
 
 ```json
@@ -109,7 +112,9 @@ Agent({
   subagent_type: "general-purpose",
   model: "<按映射表选择>",
   description: "<阶段>: <change-name>",
-  prompt: "## Agent 指令\n\n<.agents/agents/<agent>.body.md 完整内容>\n\n---\n\n## 当前任务上下文\n\n- Change Name: <change-name>\n- 项目看板: openspec/changes/<change-name>/session/project-board.yaml\n- 前一阶段产出: <artifacts>\n\n## 执行要求\n执行上述 Agent 指令中的所有步骤，产出对应文档。"
+  isolation: "worktree",
+  run_in_background: true,
+  prompt: "## 当前任务上下文\n\n- Change Name: <change-name>\n- 项目看板: openspec/changes/<change-name>/session/project-board.yaml\n- 前一阶段产出: <artifacts>\n\n## 执行要求\n执行你在 .claude/agents/ 中注册的 Agent 定义中的所有步骤，产出对应文档。"
 })
 ```
 
@@ -149,6 +154,9 @@ Agent({
 | 差异点 | Claude Code | Cursor |
 |--------|------------|--------|
 | 调度工具 | `Agent` | `Task` |
-| Agent 指令 | prompt 内联注入 | body 文件 + prompt 上下文 |
-| 模型选择 | Agent 工具 `model` 参数 | Agent frontmatter `model` 字段 |
-| 权限控制 | prompt 指令约束 | frontmatter `readonly` 字段 |
+| Agent 定义 | `.claude/agents/<agent>.md`（YAML frontmatter + 完整指令） | `.cursor/agents/<agent>.md`（YAML frontmatter + body 引用） |
+| Agent 指令 | YAML frontmatter 后的 body 内容（原生读取） | body 文件（编排器注入 Task prompt） |
+| 模型选择 | YAML frontmatter `model` 字段 + Agent 工具 `model` 参数 | YAML frontmatter `model` 字段 |
+| 权限控制 | YAML frontmatter `tools` 字段 | frontmatter `readonly` 字段 |
+| 隔离执行 | `isolation: "worktree"`（独立 git worktree） | 无 |
+| 异步执行 | `run_in_background: true`（独立 CLI 子进程） | 无 |
