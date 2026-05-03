@@ -44,7 +44,7 @@ priority: high
 | EXPLORE | 主 Agent 直接执行 | `.agents/skills/agent-explore/SKILL.md` | - |
 | CREATE | Agent 子 Agent | `.claude/agents/create-agent.md` | sonnet |
 | GATE_REVIEW | Agent 子 Agent | `.claude/agents/gate-review-agent.md` | sonnet |
-| APPLY | Agent 子 Agent | `.claude/agents/apply-agent.md` | opus |
+| APPLY | Agent 子 Agent × N（Wave 并行） | `.claude/agents/apply-agent.md` | opus |
 | CODE_REVIEW | Agent 子 Agent | `.claude/agents/code-review-agent.md` | opus |
 | TEST | Agent 子 Agent | `.claude/agents/test-agent.md` | haiku |
 | VERIFY | Agent 子 Agent | `.claude/agents/verify-agent.md` | opus |
@@ -66,9 +66,77 @@ Claude Code 使用 **Agent 工具** 派生子 Agent。子 Agent 元数据（name
 | 参数 | 使用范围 | 说明 |
 |------|---------|------|
 | `run_in_background: true` | 所有 Agent | 独立上下文窗口，不污染编排器上下文 |
-| `isolation: "worktree"` | **仅 apply-agent** | 代码编写需要独立 worktree，其它 Agent 均为只读或仅写 session 目录 |
+| `isolation: "worktree"` | **所有 Apply Agent**（并行每组一个） | 每个 group 独立 worktree，Wave 完成后 MO 合并 branches |
 
-### Agent 调度语法（通用）
+### APPLY 阶段特殊机制：Wave-based 并行调度
+
+APPLY 阶段不同于其他阶段——它在单次调度中可以并行派发多个 Apply Agent。
+
+**调度流程：**
+
+1. 读取 `openspec/changes/<change-name>/execution-plan.yaml`
+2. 若文件不存在或 `groups` 为空 → **回退**到单 Agent 串行模式（旧行为）
+3. 构建 DAG，拓扑排序 → 划分 Waves
+4. **创建 apply-base 分支**：`git checkout -b apply-base-<change-name>`（所有 Wave 合并的目标分支）
+5. **Wave 循环：**
+
+```
+Wave N = {所有 depends_on 已满足但尚未执行的 groups}
+
+   ┌─ 并行派发 Apply Agent × len(Wave N) ─────────────────┐
+   │  Agent({
+   │    subagent_type: "general-purpose",
+   │    model: "opus",
+   │    description: "代码实现: <change-name> [Group: Gx]",
+   │    isolation: "worktree",        # 每个 group 独立 worktree
+   │    run_in_background: true,
+   │    prompt: "## Agent 指令\n\n<apply-agent.body.md>\n\n---
+   │             ## 当前任务上下文\n\n
+   │             - Change Name: <change-name>
+   │             - Group ID: Gx             # 指定本 Agent 负责的 group
+   │             - Task Refs: [1.1, 1.2]    # 本 group 的任务编号列表
+   │             - 项目看板: openspec/changes/<change-name>/session/project-board.yaml
+   │             - 前一阶段产出: GATE-03 + proposal + design + tasks + specs/"
+   │  })
+   └──────────────────────────────────────────────────────┘
+
+   → 等待 Wave N 所有 Agent 完成
+
+   → 合并 Wave N：
+       git checkout apply-base-<change-name>
+       for branch in <wave-agent-branches>; do
+         git merge $branch --no-edit
+       done
+       → 冲突？→ 暂停，向用户汇报冲突文件和 groups
+       → 无冲突？→ 继续
+
+   → 推进到 Wave N+1
+```
+
+6. **全部 Waves 完成后，派发 FINAL Apply Agent：**
+
+```
+Agent({
+  subagent_type: "general-purpose",
+  model: "opus",
+  description: "代码实现: <change-name> [FINAL 汇总]",
+  isolation: "worktree",          # 从 apply-base 创建，包含所有变更
+  run_in_background: true,
+  prompt: "## Agent 指令\n\n<apply-agent.body.md>\n\n---
+           ## 当前任务上下文\n\n
+           - Change Name: <change-name>
+           - Group ID: FINAL
+           - 项目看板: openspec/changes/<change-name>/session/project-board.yaml"
+})
+```
+
+7. **FINAL Agent 完成后：**
+   - 合并 FINAL worktree 到 apply-base
+   - 合并 apply-base 到主分支（或原工作分支）
+   - 清理中间 worktrees
+   - 推进至 CODE_REVIEW
+
+### Agent 调度语法（通用，非 APPLY 阶段）
 
 ```json
 Agent({
@@ -77,19 +145,6 @@ Agent({
   description: "<当前阶段简短描述>",
   run_in_background: true,
   prompt: "## Agent 指令\n\n<.agents/agents/<agent>.body.md 完整内容>\n\n---\n\n## 当前任务上下文\n\n- Change Name: <change-name>\n- 项目看板: openspec/changes/<change-name>/session/project-board.yaml\n- 前一阶段产出: <artifacts>\n\n## 执行要求\n执行上述 Agent 指令中的所有步骤，产出对应文档。"
-})
-```
-
-### Agent 调度语法（APPLY 阶段专用，含 worktree 隔离）
-
-```json
-Agent({
-  subagent_type: "general-purpose",
-  model: "opus",
-  description: "代码实现: <change-name>",
-  isolation: "worktree",
-  run_in_background: true,
-  prompt: "## Agent 指令\n\n<.agents/agents/apply-agent.body.md 完整内容>\n\n---\n\n## 当前任务上下文\n\n..."
 })
 ```
 
@@ -130,7 +185,7 @@ Agent({
 2. **读取元数据**：读取 `.claude/agents/<agent>.md` 的 YAML frontmatter，获取 tools、model
 3. **读取共享指令体**：读取 `.agents/agents/<agent>.body.md` 完整内容
 4. **组装 prompt**：指令体 + 任务上下文（change-name + 前一阶段产出路径）
-5. **调用子 Agent**：使用 `Agent` 工具（仅 APPLY 阶段添加 `isolation: "worktree"`）：
+5. **调用子 Agent**：使用 `Agent` 工具。APPLY 阶段使用特殊的 **Wave-based 并行调度**（见上方「APPLY 阶段特殊机制」），其他阶段使用通用调度语法：
 
 ```json
 Agent({

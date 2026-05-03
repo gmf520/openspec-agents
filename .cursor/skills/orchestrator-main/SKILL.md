@@ -90,25 +90,76 @@ Cursor 适配层的脚本位于项目根 `scripts/` 目录（共享脚本）：
 4. 组装 prompt（body + 上下文）
 5. 使用 Cursor Task 工具调度
 
+**APPLY 阶段使用特殊的 Wave-based 分组调度**（详见 `.agents/skills/orchestrator-main/SKILL.md` 共享核心），其余阶段使用标准 Task 调度。
+
+### 标准调度示例（非 APPLY 阶段）
+
 ```yaml
-# 示例：APPLY 阶段
-subagent_type: "apply-agent"
-description: "代码实现: <change-name>"
+# 示例：CREATE 阶段
+subagent_type: "create-agent"
+description: "规划制品生成: <change-name>"
 prompt: |
   ## Agent 指令
-
-  <../../.agents/agents/apply-agent.body.md 完整内容>
-
+  <../../.agents/agents/create-agent.body.md 完整内容>
   ---
-
   ## 当前任务上下文
-
   - Change Name: <change-name>
   - 项目看板: openspec/changes/<change-name>/session/project-board.yaml
-  - 闸门审查结论: openspec/changes/<change-name>/session/GATE-03_gate_review.md
 
   ## 执行要求
   执行上述 Agent 指令中的所有步骤，产出对应文档。
+```
+
+### APPLY 阶段调度示例（Wave-based 分组）
+
+**普通 Group Agent：**
+
+```yaml
+subagent_type: "apply-agent"
+description: "代码实现: <change-name> [Group: G1]"
+prompt: |
+  ## Agent 指令
+  <../../.agents/agents/apply-agent.body.md 完整内容>
+  ---
+  ## 当前任务上下文
+  - Change Name: <change-name>
+  - Group ID: G1
+  - Task Refs: [1.1, 1.2, 1.3]
+  - 项目看板: openspec/changes/<change-name>/session/project-board.yaml
+  - 前一阶段产出: openspec/changes/<change-name>/session/GATE-03_gate_review.md
+
+  ## 执行要求
+  只执行 Task Refs 中的任务，不要执行其他任务。产出 DEV-04_G1_development.md。
+```
+
+**FINAL Agent（所有 Waves 完成后）：**
+
+```yaml
+subagent_type: "apply-agent"
+description: "代码实现: <change-name> [FINAL 汇总]"
+prompt: |
+  ## Agent 指令
+  <../../.agents/agents/apply-agent.body.md 完整内容>
+  ---
+  ## 当前任务上下文
+  - Change Name: <change-name>
+  - Group ID: FINAL
+  - 项目看板: openspec/changes/<change-name>/session/project-board.yaml
+
+  ## 执行要求
+  FINAL 模式：全局编译检查 + 验证 tasks.md 全部打勾 + 汇总所有 DEV-04_G* 为 DEV-04_development.md。
+```
+
+**Wave 循环逻辑（在 MO prompt 中展开）：**
+
+```
+1. 读取 execution-plan.yaml → 构建 DAG
+2. for each Wave:
+     for group in Wave:
+       Task(apply-agent, group=Gx)  # 顺序执行，共享工作目录
+       等待完成
+3. Task(apply-agent, group=FINAL)  # 全局汇总
+4. 推进至 CODE_REVIEW
 ```
 
 ## 与其他平台的差异
@@ -119,3 +170,5 @@ prompt: |
 | Agent 引用 | `subagent_type: "agent-ref"` (自动读取 .cursor/agents/) | `subagent_type: "general-purpose"` (prompt 注入) |
 | 模型选择 | frontmatter `model` 字段 | Agent 工具 `model` 参数 |
 | 只读控制 | frontmatter `readonly` 字段 | prompt 指令约束 |
+| APPLY 并行 | Wave 内顺序执行（共享工作目录，无需 merge） | Wave 内 `run_in_background: true` 并行 + `isolation: "worktree"` 隔离 + git merge |
+| APPLY 隔离 | 无（共享工作目录，变更自然累积） | `isolation: "worktree"`，每 group 独立 worktree |

@@ -134,7 +134,8 @@ Body 文件: .agents/agents/gate-review-agent.body.md
 **APPLY 阶段：**
 ```
 Body 文件: .agents/agents/apply-agent.body.md
-上下文: GATE-03 + proposal + design + tasks + specs/
+上下文: GATE-03 + proposal + design + tasks + execution-plan.yaml + specs/
+调度模式: Wave-based 并行（见下方 4. APPLY → CODE_REVIEW）
 ```
 
 **CODE_REVIEW 阶段：**
@@ -220,26 +221,121 @@ Body 文件: .agents/agents/archive-agent.body.md
   - BLOCKED → retry_count += 1, 回退 EXPLORE
 ```
 
-### 4. APPLY → CODE_REVIEW
+### 4. APPLY → CODE_REVIEW（Wave-based 并行调度）
 
-> **⚠️ 约束强化：此阶段必须调度 Apply Agent，严禁**：
+> **⚠️ 约束强化：此阶段必须调度 Apply Agent（可能多个并行），严禁**：
 > - 直接读取或分析源码（子 Agent 会自己做）
 > - 直接修改任何代码文件（.ts, .vue, .js 等）
 > - 直接运行编译或类型检查命令
 > - 直接修改 tasks.md 打勾
+> - 代劳合并冲突（应上报用户决策）
 >
-> 你的职责只有：**调度 → 等结果 → 检查条件 → 决策推进/回退**
+> 你的职责：**读取 execution-plan.yaml → 构建 DAG → Wave 并行派发 → 等结果 → 合并 → 检查条件 → 决策推进/回退**
+
+#### 4.1 调度前准备
 
 ```
-状态: APPLY
-子 Agent body: .agents/agents/apply-agent.body.md
+1. 读取 openspec/changes/<change-name>/execution-plan.yaml
+2. 若文件不存在或 groups 为空 → 回退单 Agent 串行模式（旧行为）
+3. 验证 DAG 合法性：
+   - 无循环依赖
+   - depends_on 引用的 group id 全部存在
+   - task_refs 覆盖 tasks.md 所有任务
+4. 拓扑排序 → 划分 Waves
+```
+
+#### 4.2 创建 apply-base 分支
+
+```bash
+git checkout -b apply-base-<change-name>
+```
+
+此分支作为所有 Wave 合并的目标。每个 Wave 的 Agent 从此分支的最新 commit 创建 worktree，继承前序 Waves 的所有变更。
+
+#### 4.3 Wave 循环
+
+```
+while 有未执行的 group:
+  Wave = {所有 depends_on 已满足 且 尚未执行的 groups}
+
+  ┌─ Step A: 并行派发 ──────────────────────────────────────┐
+  │ 对 Wave 中每个 group:                                    │
+  │                                                          │
+  │ Agent({                                                  │
+  │   subagent_type: "general-purpose",                      │
+  │   model: "opus",                                         │
+  │   description: "代码实现: <change-name> [Group: <Gx>]",  │
+  │   isolation: "worktree",                                 │
+  │   run_in_background: true,                               │
+  │   prompt: "## Agent 指令                                 │
+  │            <apply-agent.body.md 完整内容>                 │
+  │            ---                                           │
+  │            ## 当前任务上下文                              │
+  │            - Change Name: <change-name>                  │
+  │            - Group ID: <Gx>                              │
+  │            - Task Refs: [1.1, 1.2, ...]                  │
+  │            - 项目看板: openspec/changes/<name>/session/   │
+  │              project-board.yaml                          │
+  │            - 前一阶段产出: GATE-03 + proposal + design    │
+  │              + tasks + specs/"                           │
+  │ })                                                       │
+  └──────────────────────────────────────────────────────────┘
+
+  → 等待 Wave 内所有 Agent 完成
+
+  ┌─ Step B: 合并 Wave ────────────────────────────────────┐
+  │ git checkout apply-base-<change-name>                   │
+  │ for branch in <wave-agent-branches>:                    │
+  │   git merge $branch --no-edit                           │
+  │                                                         │
+  │ → 无冲突 → 继续下一个 Wave                               │
+  │ → 有冲突 → git merge --abort                            │
+  │            暂停工作流向用户汇报:                           │
+  │            - 冲突的 groups                              │
+  │            - 冲突的文件列表                              │
+  │            - 等待人工决策                                │
+  └─────────────────────────────────────────────────────────┘
+```
+
+#### 4.4 Wave 完成后：派发 FINAL Agent
+
+```
+Agent({
+  subagent_type: "general-purpose",
+  model: "opus",
+  description: "代码实现: <change-name> [FINAL 汇总]",
+  isolation: "worktree",
+  run_in_background: true,
+  prompt: "## Agent 指令
+           <apply-agent.body.md 完整内容>
+           ---
+           ## 当前任务上下文
+           - Change Name: <change-name>
+           - Group ID: FINAL
+           - 项目看板: openspec/changes/<change-name>/session/project-board.yaml"
+})
+```
+
+FINAL Agent 职责：
+- 全局编译检查
+- 验证 tasks.md 全部打勾
+- 汇总 DEV-04_G* → DEV-04_development.md
+
+#### 4.5 推进条件
+
+```
+FINAL Agent 完成后:
+  → 合并 FINAL worktree 到 apply-base
+  → git checkout <original-branch> && git merge apply-base-<change-name>
+  → 清理中间 worktrees
+
 检查条件:
   - openspec status --change "<name>" --json 显示所有 tasks 完成
   - DEV-04_development.md 编译结果: PASS
 
 决策:
   - 全部完成且编译通过 → 推进至 CODE_REVIEW
-  - 编译失败 < 3 次 → retry_count += 1, 回退 APPLY（让子 Agent 内部修复）
+  - 编译失败 < 3 次 → retry_count += 1, 回退 APPLY
   - 编译失败 = 3 次 → 向用户汇报
 ```
 

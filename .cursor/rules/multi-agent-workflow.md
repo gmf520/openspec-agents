@@ -46,11 +46,84 @@ globs: ""
 | EXPLORE | **主 Agent 直接执行** | `.agents/skills/agent-explore/SKILL.md` | 无 |
 | CREATE | Task 子 Agent | `.agents/agents/create-agent.body.md` | `.cursor/agents/create-agent.md` |
 | GATE_REVIEW | Task 子 Agent | `.agents/agents/gate-review-agent.body.md` | `.cursor/agents/gate-review-agent.md` |
-| APPLY | Task 子 Agent | `.agents/agents/apply-agent.body.md` | `.cursor/agents/apply-agent.md` |
+| APPLY | Task 子 Agent × N（Wave 分组） | `.agents/agents/apply-agent.body.md` | `.cursor/agents/apply-agent.md` |
 | CODE_REVIEW | Task 子 Agent | `.agents/agents/code-review-agent.body.md` | `.cursor/agents/code-review-agent.md` |
 | TEST | Task 子 Agent | `.agents/agents/test-agent.body.md` | `.cursor/agents/test-agent.md` |
 | VERIFY | Task 子 Agent | `.agents/agents/verify-agent.body.md` | `.cursor/agents/verify-agent.md` |
 | ARCHIVE | Task 子 Agent + MO | `.agents/agents/archive-agent.body.md` | `.cursor/agents/archive-agent.md` |
+
+### APPLY 阶段特殊机制：Wave-based 分组调度
+
+APPLY 阶段支持基于 `execution-plan.yaml` 的分组调度。每个 group 的 Apply Agent 只负责自己的任务子集，共享工作目录，变更自然累积无需合并。
+
+**前置条件：** CREATE 阶段必须产出 `openspec/changes/<change-name>/execution-plan.yaml`。
+
+**调度流程：**
+
+1. 读取 `openspec/changes/<change-name>/execution-plan.yaml`
+2. 若文件不存在或 `groups` 为空 → **回退**到单 Agent 串行模式（旧行为，执行全部任务）
+3. 构建 DAG，拓扑排序 → 划分 Waves
+4. **Wave 循环**（Cursor 平台：Wave 内 Agent 顺序执行，无并行，变更通过共享目录自然传递）：
+
+```
+Wave N = {所有 depends_on 已满足但尚未执行的 groups}
+
+  for group in Wave N:
+    Task(
+      subagent_type: "apply-agent"
+      description: "代码实现: <change-name> [Group: Gx]"
+      prompt: |
+        ## Agent 指令
+        <从 ../../.agents/agents/apply-agent.body.md 读取的完整内容>
+
+        ---
+
+        ## 当前任务上下文
+        - Change Name: <change-name>
+        - Group ID: Gx
+        - Task Refs: [1.1, 1.2, ...]
+        - 项目看板: openspec/changes/<change-name>/session/project-board.yaml
+        - 前一阶段产出: openspec/changes/<change-name>/session/GATE-03_gate_review.md
+
+        ## 执行要求
+        只执行上述 Task Refs 中的任务，不要执行其他任务。
+    )
+    → 等待该 Agent 完成，检查 tasks.md 中对应任务已打勾
+
+  → Wave N 全部完成，推进 Wave N+1
+```
+
+5. **全部 Waves 完成后，派发 FINAL Agent：**
+
+```
+Task(
+  subagent_type: "apply-agent"
+  description: "代码实现: <change-name> [FINAL 汇总]"
+  prompt: |
+    ## Agent 指令
+    <从 ../../.agents/agents/apply-agent.body.md 读取的完整内容>
+
+    ---
+
+    ## 当前任务上下文
+    - Change Name: <change-name>
+    - Group ID: FINAL
+    - 项目看板: openspec/changes/<change-name>/session/project-board.yaml
+
+    ## 执行要求
+    FINAL 模式：执行全局编译检查、验证 tasks.md 全部打勾、汇总所有 DEV-04_G* 为 DEV-04_development.md。
+)
+```
+
+6. FINAL Agent 完成后推进至 CODE_REVIEW
+
+**与单 Agent 模式的对比：**
+
+| | 单 Agent（旧） | Wave 分组（新） |
+|---|---|---|
+| 上下文大小 | 全部 N 个任务的上下文 | 仅本 group M 个任务（M << N） |
+| 失败影响 | 任一失败 → 全部重来 | 单 group 失败 → 仅重试该 group |
+| 代码生成质量 | 长上下文易产生幻觉 | 聚焦小范围，质量更高 |
 
 ## 调度流程
 
@@ -71,12 +144,12 @@ globs: ""
 
 ### Step 2-N: CREATE 及之后阶段（Task 子 Agent）
 
-对每个状态执行：
+对每个状态执行（APPLY 阶段使用特殊的 Wave-based 分组调度，见上方「APPLY 阶段特殊机制」）：
 
 1. **查 `.agents/workflow/state-machine.yaml`** 获取该状态的 `agent_body_map` 指向的 body 文件
 2. **读取共享 Agent body**：读取对应的 `.agents/agents/<agent>.body.md` 完整内容
 3. **准备上下文**：收集前一阶段的产出文档路径
-4. **调用子 Agent**：使用 `Task` 工具：
+4. **调用子 Agent**（非 APPLY 阶段使用标准 Task 调度）：
    ```yaml
    subagent_type: "<agent-ref>"  # 映射到 .cursor/agents/<agent-ref>.md
    description: "<阶段描述>"

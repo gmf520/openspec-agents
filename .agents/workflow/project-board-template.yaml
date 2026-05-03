@@ -34,11 +34,18 @@ change_template:
     proposal: ""
     design: ""
     tasks: ""
+    execution_plan: ""
     specs: ""
     development: ""
     code_review: ""
     test_report: ""
     verification_report: ""
+  parallel_groups:
+    enabled: false
+    total_groups: 0
+    completed_groups: []
+    current_wave: 0
+    merge_conflicts: []
   summary: ""
 
 # 项目上下文（跨会话保留）

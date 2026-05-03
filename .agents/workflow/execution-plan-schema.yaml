@@ -1,0 +1,65 @@
+# execution-plan.yaml 格式规范
+# Create Agent 按此规范生成，MainOrchestrator 按此规范消费
+# 文件位于: openspec/changes/<change-name>/execution-plan.yaml
+
+version: "1.0"
+
+# 顶层字段
+schema:
+  version:
+    type: string
+    description: 格式版本号
+    required: true
+
+  groups:
+    type: list
+    description: 任务分组列表，按 Wave 拓扑排序后的顺序
+    required: true
+    min_items: 1
+    item_schema: group
+
+# Group 字段定义
+group:
+  id:
+    type: string
+    description: 唯一标识符，格式 "G" + 数字（G1, G2, ...）
+    required: true
+    pattern: "^G\\d+$"
+
+  description:
+    type: string
+    description: 人类可读的分组描述
+    required: true
+
+  task_refs:
+    type: list[string]
+    description: tasks.md 中的任务编号列表（如 "1.1", "2.3"）
+    required: true
+    min_items: 1
+    pattern: "^\\d+\\.\\d+$"
+
+  depends_on:
+    type: list[string]
+    description: 依赖的 group id 列表，空列表表示可在 Wave 0 执行
+    required: true
+    item_pattern: "^G\\d+$"
+
+  touched_files:
+    type: list[string]
+    description: 预计修改的文件路径（相对项目根目录），用于冲突检测
+    required: false
+    item_type: relative_path
+
+# 分组规则（供 Create Agent 参考）
+grouping_rules:
+  - rule: "tasks.md 中每个顶级 ## N. Section 默认作为一个 group"
+  - rule: "Testing section 始终作为独立 group，依赖其测试覆盖的所有实现 group"
+  - rule: "若 group A 修改的组件/模块依赖 group B 定义的接口/类型 → A depends_on B"
+  - rule: "同一 Wave 内所有 groups 的 touched_files 必须无交集"
+
+# 验证规则（供 MainOrchestrator 参考）
+validation_rules:
+  - rule: "拓扑排序无环：DAG 中不允许循环依赖"
+  - rule: "依赖完整性：depends_on 中引用的 group id 必须在 groups 中定义"
+  - rule: "任务覆盖：所有 task_refs 的并集应覆盖 tasks.md 中所有任务"
+  - rule: "Wave 文件隔离：同一 Wave 内各 group 的 touched_files 无交集"

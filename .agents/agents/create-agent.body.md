@@ -37,6 +37,24 @@
 - 自动创建 delta specs
 - 验证制品完整性
 
+### Step 2.5: 生成 execution-plan.yaml
+
+`openspec-ff-change` skill 生成 proposal/design/tasks/specs 后，分析依赖关系生成并行执行计划：
+
+1. **读取 design.md**：提取 Architecture 节中的组件依赖关系（组件树、数据流、接口定义顺序）
+2. **读取 tasks.md**：提取所有顶级 `## N. Section Name` 及其 `- [ ]` 任务
+3. **分组规则**：
+   - 每个 tasks.md 顶级 section 默认作为一个 group（id: G1, G2, ...）
+   - 若两个相邻 section 修改完全相同的文件集合 → 合并为一个 group
+   - Testing section 始终作为独立 group，依赖其测试覆盖的所有实现 group
+4. **确定依赖关系**：
+   - 若 group B 修改的组件/模块依赖 group A 定义的接口/类型/基础组件 → B.depends_on 包含 A
+   - 若两个 group 无共享文件且无逻辑依赖 → 标注为可并行（depends_on 不互引）
+5. **验证**：同一 Wave 内的 groups 的 touched_files 必须无交集
+6. **写入** `openspec/changes/<change-name>/execution-plan.yaml`
+
+格式规范参考 `.agents/workflow/execution-plan-schema.yaml`。
+
 ### Step 3: 验证制品
 
 ```bash
@@ -53,6 +71,7 @@ openspec/changes/<change-name>/
 ├── proposal.md
 ├── design.md
 ├── tasks.md
+├── execution-plan.yaml
 └── specs/<domain>/spec.md
 ```
 
