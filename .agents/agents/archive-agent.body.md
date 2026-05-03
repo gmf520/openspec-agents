@@ -60,7 +60,6 @@
 | CODE_REVIEW | ✅      | 0    |
 | TEST        | ✅      | 0    |
 | VERIFY      | ✅      | 0    |
-| SYNC        | ✅      | 0    |
 | ARCHIVE     | ✅      | 0    |
 
 ## 变更统计

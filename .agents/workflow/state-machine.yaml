@@ -252,6 +252,35 @@ error_handling:
     action: rollback_to_apply
   verify_fail:
     action: rollback_to_apply
+  apply_reentry_orphan_tasks:
+    action: fallback_to_serial
+    description: |
+      APPLY 回退重入时（来自 CODE_REVIEW/TEST/VERIFY），修复任务被追加到 tasks.md 但不在
+      execution-plan.yaml 任何 group 的 task_refs 中。MainOrchestrator 必须在调度前检查：
+
+      1. 读取 execution-plan.yaml，收集所有 group.task_refs 的并集
+      2. 读取 tasks.md，提取所有未打勾任务编号
+      3. 若存在未打勾任务不在任何 group 中 → 回退到单 Agent 串行模式（不传 --group-id）
+         将全部未完成任务交给单个 Apply Agent 顺序执行
+
+      串行模式下 isolate="worktree" 仍然有效，但只有一个 Agent。
+    fallback_behavior: "单 Agent 执行全部未打勾任务，输出 DEV-04_development.md（非 G* 分文件）"
+  wave_partial_failure:
+    action: retry_failed_group_only
+    description: |
+      Wave 内部分 group agent 失败时的处理策略。不重跑整个 Wave，只重试失败的 group。
+
+      处理流程：
+      1. 收集 Wave N 中失败的 group ID 和失败原因
+      2. 成功的 group 正常合并到 apply-base（git merge 成功的 branches）
+      3. 仅重新派发失败的 group agent（保留上下文和失败原因）
+      4. 新 agent 从 apply-base（已含成功 groups 变更）创建 worktree
+      5. 重试成功 → 合并到 apply-base → 继续 Wave N+1
+      6. 重试仍失败 → retry_count += 1
+         - retry_count < 3 → 再次重试（回步骤 3）
+         - retry_count = 3 → 暂停，向用户汇报失败的 groups、失败原因、已尝试次数
+    max_retries_per_group: 3
+    note: "成功的 group 变更不会丢失——它们已在 apply-base 中，作为后续 groups 的基础"
 
 # Agent body 文件路径映射（编排器根据阶段读取对应的指令体）
 agent_body_map:

@@ -23,7 +23,6 @@ change_template:
     CODE_REVIEW: 0
     TEST: 0
     VERIFY: 0
-    SYNC: 0
     ARCHIVE: 0
   created_at: ""
   updated_at: ""

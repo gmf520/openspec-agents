@@ -129,7 +129,7 @@ powershell -ExecutionPolicy Bypass -File .agents/scripts/verify_all.ps1
 
 ### PASS（0 FAIL）
 
-所有验证通过。→ MainOrchestrator 推进至 SYNC
+所有验证通过。→ MainOrchestrator 推进至 ARCHIVE
 
 ### FAIL（有 FAIL 项）
 

@@ -78,13 +78,7 @@ openspec/changes/<change-name>/session/CR-05_code_review.md
 - [ ] 是否有边界条件测试？
 - [ ] 是否有异常路径测试？
 
-### 7. 任务完成度（Task Completion）
-
-- [ ] 所有 tasks.md 中的任务是否都已实现？
-- [ ] 是否有遗漏的任务？
-- [ ] 是否有任务未按设计实现？
-
-### 8. 编译与类型安全（Compile & Type Safety）
+### 7. 编译与类型安全（Compile & Type Safety）
 
 - [ ] DEV-04 中的编译结果是否可信？
 - [ ] 是否有类型不安全的操作（any/as 滥用）？
@@ -124,8 +118,7 @@ openspec/changes/<change-name>/session/CR-05_code_review.md
 | 4. 可维护性       | ✅/⚠️/❌ | N      |
 | 5. 一致性         | ✅/⚠️/❌ | N      |
 | 6. 测试覆盖       | ✅/⚠️/❌ | N      |
-| 7. 任务完成度     | ✅/⚠️/❌ | N      |
-| 8. 编译与类型安全 | ✅/⚠️/❌ | N      |
+| 7. 编译与类型安全 | ✅/⚠️/❌ | N      |
 
 ---
 
